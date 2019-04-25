@@ -53,6 +53,27 @@ class RestClient():
 
         return order
 
+    def getOrder(self, **kwargs):
+
+        order = None
+
+        try:
+            order, response = self.api.Order.getOrders(**kwargs).result()
+        except Exception as e:
+            print(e)
+            print("Failed to cancel order with params: {}".format(kwargs))
+        else:
+            if response.status_code != 200:
+                print("Failed to cancel order with params: {}".format(kwargs))
+                print("Status code: {}, Reason: {}".format(response.status_code, response.reason))
+                print ("Order: {}".format(order))
+                order = None
+
+        if order is not None and len(order) > 0:
+            order = order[0]
+
+        return order
+
     def openOrders(self):
 
         orders = None

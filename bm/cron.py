@@ -1,3 +1,4 @@
+import time
 from bm.lib.user import User
 
 # from django.conf import settings
@@ -23,5 +24,8 @@ class SampleCronJob(CronJobBase):
 
         symbol = data.get('symbol', 'XBTUSD')
         endpoint = data.get('endpoint', "https://www.bitmex.com/api/v1")
-        user = User('30kvol_2trratio', data['key'], data['secret'], symbol, endpoint)
-        user.worker(min_volume=30000, trigger_ratio=3)
+
+        while True:
+            user = User('10Mvol_3trratio', data['key'], data['secret'], symbol, endpoint)
+            user.worker(min_volume=10000000, trigger_ratio=3, dry_run=True)
+            time.sleep(300)

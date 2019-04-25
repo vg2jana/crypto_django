@@ -115,7 +115,10 @@ class User:
 
     def update_order(self, **kwargs):
 
-        order = Order.objects.filter(orderID__exact=kwargs.pop('orderID')).first()
+        order_id = kwargs.pop('orderID')
+        self.client.getOrder(orderID=order_id)
+
+        order = Order.objects.filter(orderID__exact=order_id).first()
         for k, v in kwargs.items():
             order.__setattr__(k, v)
 
