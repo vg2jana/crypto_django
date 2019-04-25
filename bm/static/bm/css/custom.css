@@ -1,0 +1,45 @@
+.single-indent {
+    margin-left: 5%;
+}
+
+.double-indent {
+    margin-left: 10%;
+}
+
+.text-bar {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    border: 1px solid #ddd;
+    width: 100%;
+    padding-left: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+}
+
+.h1 {font-size: 1.875em;}
+.h2 {font-size: 1.25em;}
+.h2 {font-size: 1.1em;}
+
+.bg-blue {
+    background-color: darkblue;
+    color: white;
+}
+
+.bg-green {
+    background-color: darkgreen;
+    color: white;
+}
+
+.bg-orange {
+    background-color: darkorange;
+    color: white;
+}
+
+.pencil-icon {
+    content: url("/static/lic/images/pencil.svg");
+    /*margin-top: 10px;*/
+    /*margin-bottom: 10px;*/
+    max-width: 10px;
+    max-height: 10px;
+    cursor: pointer;
+}

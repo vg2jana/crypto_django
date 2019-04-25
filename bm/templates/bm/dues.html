@@ -1,0 +1,94 @@
+{% extends "lic/base.html" %}
+{% load static %}
+
+{% block extra_js %}
+    <script type="text/javascript" src="{% static 'lic/js/due.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{% static 'lic/css/table.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'lic/css/custom.css' %}" />
+    {% if due_list %}
+        <!-- Modal for Due edit -->
+        <div>
+            <div class="modal fade" id="duemodal" tabindex="-1" role="dialog" aria-labelledby="Due" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="dueTitle">Edit Due</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <form class="due-form" method="post">
+                            {% csrf_token %}
+                            <div class="modal-body" id="due-content">
+                                <div class="form-group row">
+                                    <label for="staticName" class="col-sm-4 col-form-label font-weight-bold">Name:</label>
+                                    <div class="col-sm-6">
+                                        <input type="text" readonly class="form-control-plaintext" id="staticName" value="">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="staticEmail" class="col-sm-4 col-form-label font-weight-bold">Email:</label>
+                                    <div class="col-sm-6">
+                                        <input type="text" readonly class="form-control-plaintext" id="staticEmail" value="">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="staticMobile" class="col-sm-4 col-form-label font-weight-bold">Mobile:</label>
+                                    <div class="col-sm-6">
+                                        <input type="text" readonly class="form-control-plaintext" id="staticMobile" value="">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="staticPolicy" class="col-sm-4 col-form-label font-weight-bold">Policy:</label>
+                                    <div class="col-sm-6">
+                                        <input type="text" readonly class="form-control-plaintext" id="staticPolicy" value="">
+                                    </div>
+                                </div>
+                                <fieldset class="form-group">
+                                    <div class="row">
+                                      <legend class="col-form-label col-sm-4 font-weight-bold">Premium paid?</legend>
+                                      <div class="col-sm-6 due-form-premium">
+                                        <div class="form-check">
+                                          <input class="form-check-input" type="radio" name="premiumPaid" id="premiumPaid" value=True>
+                                          <label class="form-check-label" for="premiumPaid">Paid</label>
+                                        </div>
+                                        <div class="form-check">
+                                          <input class="form-check-input" type="radio" name="premiumPaid" id="premiumUnPaid" value=False>
+                                          <label class="form-check-label" for="premiumUnPaid">Not Paid</label>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </fieldset>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" id="due-submit">Save changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table id="customers">
+        {% for column in column_names %}
+            <th>{{ column }}</th>
+        {% endfor %}
+        {% for due in due_list %}
+            <tr>
+                <td>{{ due.policy.client.full_name }}</td>
+                <td>{{ due.policy.client.email }}</td>
+                <td>{{ due.policy.client.mobile_number }}</td>
+                <td>{{ due.policy.number }}</td>
+                <td>{{ due.due_date }}</td>
+                <td>{{ due.grace_date }}</td>
+                <td id={{ due.id }} class="premium_paid">{{ due.premium_paid }}</td>
+            </tr>
+        {% endfor %}
+        </table>
+    {% else %}
+        <p>No Dues.</p>
+    {% endif %}
+{% endblock %}

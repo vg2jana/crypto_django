@@ -1,0 +1,76 @@
+{% extends "lic/base.html" %}
+{% load static %}
+
+
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{% static 'lic/css/table.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'lic/css/custom.css' %}" />
+    {% if client %}
+        <div class="row">
+            <div class="col-md-8">
+                <div class="text-bar h2 bg-green">{{ client.first_name }} {{ client.last_name }}</div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-8">
+                <table class="table" id="customers">
+                    <tr>
+                        <td>Customer id:</td>
+                        <td>{{ client.customer_id }}</td>
+                    </tr>
+                    <tr>
+                        <td>Email id:</td>
+                        <td>{{ client.email }}</td>
+                    </tr>
+                    <tr>
+                        <td>Gender:</td>
+                        <td>{{ client.get_gender_display }}</td>
+                    </tr>
+                    <tr>
+                        <td>Mobile:</td>
+                        <td>{{ client.mobile_number }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        {% for policy in client.policy_set.all %}
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="text-bar h2 bg-blue">Policy: {{ policy.number }}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-8">
+                    <table class="table" id="customers">
+                        <tr>
+                            <td>Policy name:</td>
+                            <td>{{ policy.name }}</td>
+                        </tr>
+                        <tr>
+                            <td>Premium term:</td>
+                            <td>{{ policy.get_premium_term_display }}</td>
+                        </tr>
+                        <tr>
+                            <td>Policy start date:</td>
+                            <td>{{ policy.start_date }}</td>
+                        </tr>
+                        <tr>
+                            <td>Policy end date:</td>
+                            <td>{{ policy.end_date }}</td>
+                        </tr>
+                        <tr>
+                            <td>Premium Amount:</td>
+                            <td>INR {{ policy.premium_amount }}</td>
+                        </tr>
+                        <tr>
+                            <td>Next Due Date:</td>
+                            <td>{{ policy.next_due_date }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No Client information</p>
+    {% endif %}
+{% endblock %}

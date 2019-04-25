@@ -1,0 +1,29 @@
+{% extends "lic/base.html" %}
+{% load static %}
+
+
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{% static 'lic/css/table.css' %}" />
+    {% if client_list %}
+        <table id="customers">
+        {% for column in column_names %}
+            <th>{{ column }}</th>
+        {% endfor %}
+        {% for client in client_list %}
+            <tr>
+                <td><a href="{% url 'lic:client_detail' client.id %}">{{ client.first_name }} {{ client.last_name }}</a></td>
+                <td>{{ client.customer_id }}</td>
+                <td>{{ client.email }}</td>
+                <td>{{ client.mobile_number }}</td>
+                <td>
+                    {% for policy in client.policy_set.all %}
+                        {{ policy.number }}<br/>
+                    {% endfor %}
+                </td>
+            </tr>
+        {% endfor %}
+        </table>
+    {% else %}
+        <p>No Clients registered.</p>
+    {% endif %}
+{% endblock %}
