@@ -233,12 +233,12 @@ class User:
                     remark = 'Loss'
 
             if remark is 'Gain':
-                gain_order.order_status = 'Filled'
+                gain_order.ordStatus = 'Filled'
                 gain_order.save()
-                risk_order.order_status = 'Canceled'
+                risk_order.ordStatus = 'Canceled'
                 risk_order.save()
             else:
-                gain_order.order_status = 'Canceled'
+                gain_order.ordStatus = 'Canceled'
                 gain_order.save()
-                risk_order.order_status = 'Filled'
+                risk_order.ordStatus = 'Filled'
                 risk_order.save()

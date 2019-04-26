@@ -25,7 +25,10 @@ class SampleCronJob(CronJobBase):
         symbol = data.get('symbol', 'XBTUSD')
         endpoint = data.get('endpoint', "https://www.bitmex.com/api/v1")
 
-        while True:
-            user = User('10Mvol_3trratio', data['key'], data['secret'], symbol, endpoint)
-            user.worker(min_volume=10000000, trigger_ratio=3, dry_run=True)
-            time.sleep(300)
+        count = 0
+
+        while count < 200:
+            user = User('vol_10M_trratio_2', data['key'], data['secret'], symbol, endpoint)
+            user.worker(min_volume=10000000, trigger_ratio=2, dry_run=True)
+            time.sleep(60)
+            count += 1
