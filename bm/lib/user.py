@@ -1,6 +1,7 @@
 import time
 import uuid
 import sys
+import websocket
 
 from datetime import datetime
 from bitmex_websocket import BitMEXWebsocket
@@ -48,8 +49,22 @@ class User:
         self.ws.get_instrument()
         self.order_attrs = [f.name for f in Order._meta.get_fields()]
         self.name = name
+        self.endpoint = endpoint
+        self.key = key
+        self.secret = secret
+        self.symbol = symbol
+
+    def try_ping(self):
+        try:
+            self.ws.ws.send('ping')
+        except websocket.WebSocketConnectionClosedException as e:
+            self.ws = BitMEXWebsocket(endpoint=self.endpoint, symbol=self.symbol,
+                                      api_key=self.key, api_secret=self.secret)
+        except Exception as e:
+            print(e)
 
     def depth_info(self):
+        self.try_ping()
         try:
             return self.ws.market_depth()
         except Exception as e:
@@ -59,6 +74,7 @@ class User:
         return None
 
     def ticker(self):
+        self.try_ping()
         try:
             return self.ws.get_ticker()
         except Exception as e:
@@ -68,6 +84,7 @@ class User:
         return None
 
     def open_orders(self):
+        self.try_ping()
         try:
             return self.ws.open_orders('')
         except Exception as e:
@@ -111,10 +128,12 @@ class User:
         kwargs["symbol"] = self.client.symbol
         kwargs["ordStatus"] = kwargs.get("ordStatus", "New")
         kwargs = {k: v for k, v in kwargs.items() if k in self.order_attrs}
+        print(kwargs)
         return Order.objects.create(**kwargs)
 
     def update_order(self, **kwargs):
 
+        print(kwargs)
         order_id = kwargs.pop('orderID')
         self.client.getOrder(orderID=order_id)
 
@@ -234,11 +253,13 @@ class User:
 
             if remark is 'Gain':
                 gain_order.ordStatus = 'Filled'
-                gain_order.save()
                 risk_order.ordStatus = 'Canceled'
-                risk_order.save()
             else:
                 gain_order.ordStatus = 'Canceled'
-                gain_order.save()
                 risk_order.ordStatus = 'Filled'
-                risk_order.save()
+
+            gain_order.timestamp = datetime.utcnow()
+            risk_order.timestamp = datetime.utcnow()
+
+            gain_order.save()
+            risk_order.save()
