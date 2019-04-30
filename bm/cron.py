@@ -1,4 +1,5 @@
 import time
+import logging
 from bm.lib.user import User
 
 # from django.conf import settings
@@ -7,6 +8,7 @@ from bm.lib.user import User
 # python3 manage.py runcrons "bm.cron.SampleCronJob"
 from django_cron import CronJobBase, Schedule
 
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO, filemode='a', filename='app.log')
 
 class SampleCronJob(CronJobBase):
     RUN_EVERY_MINS = 1440 # every 24 hours
@@ -32,3 +34,4 @@ class SampleCronJob(CronJobBase):
             user.worker(min_volume=10000000, trigger_ratio=2, dry_run=True)
             time.sleep(60)
             count += 1
+            logging.info('Iteration completed: {}'.format(count))

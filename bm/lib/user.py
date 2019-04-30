@@ -2,6 +2,7 @@ import time
 import uuid
 import sys
 import websocket
+import logging
 
 from datetime import datetime
 from bitmex_websocket import BitMEXWebsocket
@@ -53,6 +54,7 @@ class User:
         self.key = key
         self.secret = secret
         self.symbol = symbol
+        self.logger = logging.getLogger()
 
     def try_ping(self):
         try:
@@ -61,15 +63,15 @@ class User:
             self.ws = BitMEXWebsocket(endpoint=self.endpoint, symbol=self.symbol,
                                       api_key=self.key, api_secret=self.secret)
         except Exception as e:
-            print(e)
+            self.logger.warning(e)
 
     def depth_info(self):
         self.try_ping()
         try:
             return self.ws.market_depth()
         except Exception as e:
-            print(e)
-            print("Error fetching market depth")
+            self.logger.warning("Error fetching market depth")
+            self.logger.warning(e)
 
         return None
 
@@ -78,8 +80,8 @@ class User:
         try:
             return self.ws.get_ticker()
         except Exception as e:
-            print(e)
-            print("Error fetching ticker")
+            self.logger.warning("Error fetching ticker")
+            self.logger.warning(e)
 
         return None
 
@@ -88,8 +90,8 @@ class User:
         try:
             return self.ws.open_orders('')
         except Exception as e:
-            print(e)
-            print("Error fetching Open orders")
+            self.logger.warning("Error fetching Open orders")
+            self.logger.warning(e)
 
         return None
 
@@ -128,12 +130,12 @@ class User:
         kwargs["symbol"] = self.client.symbol
         kwargs["ordStatus"] = kwargs.get("ordStatus", "New")
         kwargs = {k: v for k, v in kwargs.items() if k in self.order_attrs}
-        print(kwargs)
+        self.logger.info(kwargs)
         return Order.objects.create(**kwargs)
 
     def update_order(self, **kwargs):
 
-        print(kwargs)
+        self.logger.info(kwargs)
         order_id = kwargs.pop('orderID')
         self.client.getOrder(orderID=order_id)
 
