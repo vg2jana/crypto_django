@@ -8,7 +8,7 @@ from bm.lib.user import User
 # python3 manage.py runcrons "bm.cron.SampleCronJob"
 from django_cron import CronJobBase, Schedule
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO, filemode='a', filename='app.log')
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO, filemode='a', filename='app.log')
 
 class SampleCronJob(CronJobBase):
     RUN_EVERY_MINS = 1440 # every 24 hours

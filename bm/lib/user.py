@@ -41,27 +41,35 @@ class StabilityTimer:
 class User:
 
     def __init__(self, name, key, secret, symbol, endpoint):
-        try:
-            self.client = RestClient(key, secret, symbol)
-            self.ws = BitMEXWebsocket(endpoint=endpoint, symbol=symbol, api_key=key, api_secret=secret)
-        except Exception as e:
-            print(e)
-            sys.exit(1)
-        self.ws.get_instrument()
+
+        self.logger = logging.getLogger()
         self.order_attrs = [f.name for f in Order._meta.get_fields()]
         self.name = name
         self.endpoint = endpoint
         self.key = key
         self.secret = secret
         self.symbol = symbol
-        self.logger = logging.getLogger()
+        self.ws = None
+        try:
+            self.client = RestClient(key, secret, symbol)
+            self.connect_ws()
+        except Exception as e:
+            self.logger.fatal(e)
+            sys.exit(1)
+
+    def connect_ws(self):
+        self.ws = BitMEXWebsocket(endpoint=self.endpoint, symbol=self.symbol,
+                                  api_key=self.key, api_secret=self.secret)
+        self.ws.get_instrument()
 
     def try_ping(self):
+        if self.ws.ws.sock is None:
+            self.connect_ws()
+
         try:
-            self.ws.ws.send('ping')
+            self.ws.ws.sock.ping()
         except websocket.WebSocketConnectionClosedException as e:
-            self.ws = BitMEXWebsocket(endpoint=self.endpoint, symbol=self.symbol,
-                                      api_key=self.key, api_secret=self.secret)
+            self.connect_ws()
         except Exception as e:
             self.logger.warning(e)
 
