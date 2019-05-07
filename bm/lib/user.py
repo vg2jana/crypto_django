@@ -50,17 +50,32 @@ class User:
         self.secret = secret
         self.symbol = symbol
         self.ws = None
-        try:
-            self.client = RestClient(key, secret, symbol)
-            self.connect_ws()
-        except Exception as e:
-            self.logger.fatal(e)
-            sys.exit(1)
+
+        self.connect_ws()
+
+        self.connect_api()
+
+    def connect_api(self):
+        while True:
+            self.logger.info('Attempting to connect to REST Client')
+            try:
+                self.client = RestClient(self.key, self.secret, self.symbol)
+                break
+            except Exception as e:
+                self.logger.warning(e)
+            time.sleep(1)
 
     def connect_ws(self):
-        self.ws = BitMEXWebsocket(endpoint=self.endpoint, symbol=self.symbol,
-                                  api_key=self.key, api_secret=self.secret)
-        self.ws.get_instrument()
+        while True:
+            self.logger.info('Attempting to connect WS')
+            try:
+                self.ws = BitMEXWebsocket(endpoint=self.endpoint, symbol=self.symbol,
+                                          api_key=self.key, api_secret=self.secret)
+                self.ws.get_instrument()
+                break
+            except Exception as e:
+                self.logger.warning(e)
+            time.sleep(1)
 
     def try_ping(self):
         if self.ws.ws.sock is None:

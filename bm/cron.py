@@ -30,8 +30,8 @@ class SampleCronJob(CronJobBase):
         count = 0
 
         while count < 200:
-            user = User('vol_10M_trratio_2', data['key'], data['secret'], symbol, endpoint)
-            user.worker(min_volume=10000000, trigger_ratio=2, dry_run=True)
+            user = User('vol_8M_trratio_2', data['key'], data['secret'], symbol, endpoint)
+            user.worker(min_volume=8000000, trigger_ratio=2, dry_run=True)
             time.sleep(60)
             count += 1
             logging.info('Iteration completed: {}'.format(count))
