@@ -6,7 +6,7 @@ import logging
 
 from datetime import datetime
 from bitmex_websocket import BitMEXWebsocket
-from bm.models import Order
+from bm.models import ParentOrder, Order
 
 from bm.lib.client import RestClient
 
@@ -50,6 +50,7 @@ class User:
         self.secret = secret
         self.symbol = symbol
         self.ws = None
+        self.parent_order = ParentOrder.objects.create(uid=uuid.uuid1())
 
         self.connect_ws()
 
@@ -152,6 +153,7 @@ class User:
         kwargs["name"] = self.name
         kwargs["symbol"] = self.client.symbol
         kwargs["ordStatus"] = kwargs.get("ordStatus", "New")
+        kwargs["parentOrder"] = self.parent_order
         kwargs = {k: v for k, v in kwargs.items() if k in self.order_attrs}
         self.logger.info(kwargs)
         return Order.objects.create(**kwargs)
@@ -249,9 +251,9 @@ class User:
             if ticker is None:
                 return
 
-            self.record_order(orderID=uuid.uuid1().hex, ordType="Market", side=side,
-                              price=ticker['last'], timestamp=datetime.utcnow(),
-                              remark="First order", ordStatus="Filled")
+            market_order = self.record_order(orderID=uuid.uuid1().hex, ordType="Market", side=side,
+                                              price=ticker['last'], timestamp=datetime.utcnow(),
+                                              remark="First order", ordStatus="Filled")
 
             market_price = ticker['last']
             plus_or_minus = 1 if side == 'Buy' else -1
@@ -275,6 +277,13 @@ class User:
                     remark = 'Gain'
                 elif (new_side == 'Buy' and last >= risk_price) or (new_side == 'Sell' and last <= risk_price):
                     remark = 'Loss'
+                else:
+                    time_diff = datetime.utcnow() - market_order.timestamp
+                    if time_diff.total_seconds() > 3600:
+                        remark = 'Loss'
+                        risk_order.price = last
+                        risk_order.save()
+
 
             if remark is 'Gain':
                 gain_order.ordStatus = 'Filled'

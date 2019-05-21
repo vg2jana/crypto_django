@@ -1,0 +1,35 @@
+{% extends "bm/base.html" %}
+{% load static %}
+
+{% block extra_js %}
+    <script type="text/javascript" src="{% static 'bm/js/order.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{% static 'bm/css/table.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'bm/css/custom.css' %}" />
+    {% if order_list %}
+        <table id="orders">
+            <thead>
+                <tr>
+                {% for column in column_names %}
+                    <th>{{ column }}</th>
+                {% endfor %}
+                </tr>
+            </thead>
+        {% for order in order_list %}
+            <tr>
+                <td>{{ due.policy.client.full_name }}</td>
+                <td>{{ due.policy.client.email }}</td>
+                <td>{{ due.policy.client.mobile_number }}</td>
+                <td>{{ due.policy.number }}</td>
+                <td>{{ due.due_date }}</td>
+                <td>{{ due.grace_date }}</td>
+                <td id={{ due.id }} class="premium_paid">{{ due.premium_paid }}</td>
+            </tr>
+        {% endfor %}
+        </table>
+    {% else %}
+        <p>No Orders.</p>
+    {% endif %}
+{% endblock %}

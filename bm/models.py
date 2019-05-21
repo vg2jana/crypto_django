@@ -2,7 +2,13 @@ from django.db import models
 
 # Create your models here.
 
+
+class ParentOrder(models.Model):
+    uid = models.CharField(max_length=30, default='')
+
+
 class Order(models.Model):
+    parentOrder = models.ForeignKey(ParentOrder, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
 
     orderID = models.CharField(max_length=30, default='')
