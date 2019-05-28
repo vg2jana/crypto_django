@@ -124,8 +124,8 @@ class User:
             depth = self.depth_info()
 
         mid_price = self.ticker()['mid']
-        level_up = mid_price + mid_price * 0.003
-        level_down = mid_price - mid_price * 0.003
+        level_up = mid_price + mid_price * 0.001
+        level_down = mid_price - mid_price * 0.001
 
         bids = 0
         asks = 0
@@ -168,6 +168,29 @@ class User:
 
         order.save()
 
+    def wait_for_close_depths(self, depths=3):
+
+        side = None
+
+        while side is None:
+            depth = self.ws.market_depth()
+            if depth is None:
+                continue
+
+            bids = [x[1] for x in depth['bids'][:depths]]
+            asks = [x[1] for x in depth['asks'][:depths]]
+
+            if max(bids[0], asks[0]) <= 1000000:
+                continue
+
+            if bids[0] > 1000000 and sum(asks) < 200000:
+                side = 'Buy'
+
+            if asks[0] > 1000000 and sum(bids) < 200000:
+                side = 'Sell'
+
+        return side, 1
+
     def wait_for_opportunity(self, min_volume, trigger_ratio):
         stability_timer = StabilityTimer()
 
@@ -205,7 +228,8 @@ class User:
 
     def worker(self, qty=1, min_volume=7000000, trigger_ratio=5, price_multiplier=1.5, dry_run=False):
 
-        side, ratio = self.wait_for_opportunity(min_volume, trigger_ratio)
+        # side, ratio = self.wait_for_opportunity(min_volume, trigger_ratio)
+        side, ratio = self.wait_for_close_depths()
 
         if dry_run is False:
             market_order = self.client.newOrder(orderQty=qty, ordType="Market", side=side)
@@ -215,7 +239,7 @@ class User:
             market_price = market_order['price']
             plus_or_minus = 1 if side == 'Buy' else -1
             gain_price = market_price + ratio * price_multiplier * plus_or_minus
-            risk_price = market_price + 50 * plus_or_minus * -1
+            risk_price = market_price + 10 * plus_or_minus * -1
             new_side = 'Sell' if side == 'Buy' else 'Buy'
 
             gain_order = self.client.newOrder(orderQty=qty, ordType="MarketIfTouched", execInst="LastPrice",
