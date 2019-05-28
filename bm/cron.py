@@ -32,7 +32,31 @@ class SampleCronJob(CronJobBase):
         while count < 500:
             count += 1
             logging.info('Iteration starting: {}'.format(count))
-            user = User('vol_8M_trratio_2.5', data['key'], data['secret'], symbol, endpoint)
+            user = User('8MV_2.5TR_Q1', data['key'], data['secret'], symbol, endpoint)
             user.worker(min_volume=8000000, trigger_ratio=2.5, dry_run=True)
             time.sleep(60)
             logging.info('Iteration completed: {}'.format(count))
+
+
+# gain = 0
+# loss = 0
+# for p in ParentOrder.objects.all():
+#     m = None
+#     g = None
+#     l = None
+#     diff = 0
+#     for o in p.order_set.all():
+#         if o.ordType == 'Market':
+#             m = o
+#         elif o.text == 'Gain order' and o.ordStatus == 'Filled':
+#             g = o
+#         elif o.text == 'Risk order' and o.ordStatus == 'Filled':
+#             l = o
+#     if g is not None:
+#         diff = (g.timestamp - m.timestamp)
+#         gain += abs(m.price - g.price)
+#     if l is not None:
+#         diff = (l.timestamp - m.timestamp)
+#         loss += abs(m.price - l.price)
+#     if diff != 0:
+#         print(diff.total_seconds())

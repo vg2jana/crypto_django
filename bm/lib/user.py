@@ -44,13 +44,12 @@ class User:
 
         self.logger = logging.getLogger()
         self.order_attrs = [f.name for f in Order._meta.get_fields()]
-        self.name = name
         self.endpoint = endpoint
         self.key = key
         self.secret = secret
         self.symbol = symbol
         self.ws = None
-        self.parent_order = ParentOrder.objects.create(uid=uuid.uuid1())
+        self.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name=name)
 
         self.connect_ws()
 
@@ -150,7 +149,6 @@ class User:
 
     def record_order(self, **kwargs):
 
-        kwargs["name"] = self.name
         kwargs["symbol"] = self.client.symbol
         kwargs["ordStatus"] = kwargs.get("ordStatus", "New")
         kwargs["parentOrder"] = self.parent_order
@@ -211,6 +209,7 @@ class User:
 
         if dry_run is False:
             market_order = self.client.newOrder(orderQty=qty, ordType="Market", side=side)
+            market_order['text'] = 'First order'
             self.record_order(**market_order)
 
             market_price = market_order['price']
@@ -221,15 +220,16 @@ class User:
 
             gain_order = self.client.newOrder(orderQty=qty, ordType="MarketIfTouched", execInst="LastPrice",
                                                stopPx=gain_price, side=new_side)
+            gain_order['text'] = 'Gain order'
             self.record_order(**gain_order)
 
             risk_order = self.client.newOrder(orderQty=qty, ordType="StopMarket", execInst="LastPrice",
                                                stopPx=risk_price, side=new_side)
+            risk_order['text'] = 'Risk order'
             self.record_order(**risk_order)
 
             while True:
 
-                time.sleep(5)
                 orders = self.client.openOrders()
                 if orders is None:
                     continue
@@ -237,11 +237,19 @@ class User:
                 order_ids = [o['orderID'] for o in orders]
 
                 if gain_order['orderID'] not in order_ids:
-                    self.client.cancelOrder(orderID=risk_order['orderID'])
+                    risk_order = self.client.cancelOrder(orderID=risk_order['orderID'])
                     break
                 elif risk_order['orderID'] not in order_ids:
-                    self.client.cancelOrder(orderID=gain_order['orderID'])
+                    gain_order = self.client.cancelOrder(orderID=gain_order['orderID'])
                     break
+
+                time_diff = datetime.utcnow() - market_order.timestamp
+                if time_diff.total_seconds() > 3600:
+                    risk_order = self.client.cancelOrder(orderID=risk_order['orderID'])
+                    gain_order = self.client.cancelOrder(orderID=gain_order['orderID'])
+                    market_order = self.client.newOrder(orderQty=qty, ordType="Market", side=new_side)
+                    market_order['text'] = 'Risk order'
+                    self.record_order(**market_order)
 
             self.update_order(**gain_order)
             self.update_order(**risk_order)

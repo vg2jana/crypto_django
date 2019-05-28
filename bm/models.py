@@ -5,12 +5,11 @@ from django.db import models
 
 class ParentOrder(models.Model):
     uid = models.CharField(max_length=30, default='')
+    name = models.CharField(max_length=200)
 
 
 class Order(models.Model):
     parentOrder = models.ForeignKey(ParentOrder, on_delete=models.CASCADE)
-    name = models.CharField(max_length=200)
-
     orderID = models.CharField(max_length=30, default='')
     ordType = models.CharField(max_length=20, default='')
     ordStatus = models.CharField(max_length=30, default='')
@@ -21,6 +20,3 @@ class Order(models.Model):
     stopPx = models.FloatField(null=True, blank=True, default=None)
     text = models.CharField(max_length=100, default='')
     ordRejReason = models.CharField(max_length=100, default='')
-
-    def __str__(self):
-        return self.name
