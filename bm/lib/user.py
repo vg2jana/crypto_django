@@ -177,8 +177,8 @@ class User:
             if depth is None:
                 continue
 
-            bids = [x[1] for x in depth['bids'][:depths]]
-            asks = [x[1] for x in depth['asks'][:depths]]
+            bids = [x[1] for x in depth[0]['bids'][:depths]]
+            asks = [x[1] for x in depth[0]['asks'][:depths]]
 
             if max(bids[0], asks[0]) <= 1000000:
                 continue
@@ -290,7 +290,7 @@ class User:
             market_price = ticker['last']
             plus_or_minus = 1 if side == 'Buy' else -1
             gain_price = market_price + ratio * price_multiplier * plus_or_minus
-            risk_price = market_price + 50 * plus_or_minus * -1
+            risk_price = market_price + 10 * plus_or_minus * -1
             new_side = 'Sell' if side == 'Buy' else 'Buy'
 
             gain_order = self.record_order(orderID=uuid.uuid1().hex, ordType="MarketIfTouched", side=new_side,
