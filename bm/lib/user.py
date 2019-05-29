@@ -48,7 +48,8 @@ class User:
         self.symbol = symbol
         self.ws = None
         self.dry_run = dry_run
-
+        self.parent_order = None
+        self.client = None
 
     def connect_ws(self):
         while True:
@@ -136,7 +137,7 @@ class User:
 
     def record_order(self, **kwargs):
 
-        kwargs["symbol"] = self.client.symbol
+        kwargs["symbol"] = self.symbol
         kwargs["ordStatus"] = kwargs.get("ordStatus", "New")
         kwargs["parentOrder"] = self.parent_order
         kwargs = {k: v for k, v in kwargs.items() if k in self.order_attrs}
