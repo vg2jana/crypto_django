@@ -87,6 +87,7 @@ class User:
         try:
             self.ws.ws.sock.ping()
         except websocket.WebSocketConnectionClosedException as e:
+            self.logger.warning(e)
             self.connect_ws()
         except Exception as e:
             self.logger.warning(e)
