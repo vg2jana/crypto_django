@@ -40,7 +40,7 @@ class StabilityTimer:
 
 class User:
 
-    def __init__(self, name, key, secret, symbol, endpoint):
+    def __init__(self, name, key, secret, symbol, endpoint, dry_run=True):
 
         self.logger = logging.getLogger()
         self.order_attrs = [f.name for f in Order._meta.get_fields()]
@@ -49,6 +49,7 @@ class User:
         self.secret = secret
         self.symbol = symbol
         self.ws = None
+        self.dry_run = dry_run
         self.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name=name)
 
         self.connect_ws()
@@ -59,11 +60,12 @@ class User:
         while True:
             self.logger.info('Attempting to connect to REST Client')
             try:
-                self.client = RestClient(self.key, self.secret, self.symbol)
+                self.client = RestClient(self.dry_run, self.key, self.secret, self.symbol)
                 break
             except Exception as e:
                 self.logger.warning(e)
             time.sleep(1)
+        self.logger.info('Connected to REST Client')
 
     def connect_ws(self):
         while True:
@@ -76,6 +78,7 @@ class User:
             except Exception as e:
                 self.logger.warning(e)
             time.sleep(1)
+        self.logger.info('Connected to WS')
 
     def try_ping(self):
         if self.ws.ws.sock is None:
@@ -171,6 +174,8 @@ class User:
     def wait_for_close_depths(self, depths=3):
 
         side = None
+        min_first_depth = 1200000
+        cross_max_vol = 100000
 
         while side is None:
             depth = self.ws.market_depth()
@@ -180,13 +185,13 @@ class User:
             bids = [x[1] for x in depth[0]['bids'][:depths]]
             asks = [x[1] for x in depth[0]['asks'][:depths]]
 
-            if max(bids[0], asks[0]) <= 1000000:
-                continue
+            sum_bids = sum(bids)
+            sum_asks = sum(asks)
 
-            if bids[0] > 1000000 and sum(asks) < 200000:
+            if bids[0] > min_first_depth and sum_asks < cross_max_vol:
                 side = 'Buy'
 
-            if asks[0] > 1000000 and sum(bids) < 200000:
+            if asks[0] > min_first_depth and sum_bids < cross_max_vol:
                 side = 'Sell'
 
         return side, 1
@@ -226,12 +231,12 @@ class User:
         ratio = min(ratio, 5)
         return side, ratio
 
-    def worker(self, qty=1, min_volume=7000000, trigger_ratio=5, price_multiplier=1.5, dry_run=False):
+    def worker(self, qty=1, min_volume=7000000, trigger_ratio=5, price_multiplier=4):
 
         # side, ratio = self.wait_for_opportunity(min_volume, trigger_ratio)
         side, ratio = self.wait_for_close_depths()
 
-        if dry_run is False:
+        if self.dry_run is False:
             market_order = self.client.newOrder(orderQty=qty, ordType="Market", side=side)
             market_order['text'] = 'First order'
             self.record_order(**market_order)
@@ -268,7 +273,15 @@ class User:
                     break
 
                 time_diff = datetime.utcnow() - market_order.timestamp
-                if time_diff.total_seconds() > 3600:
+                if time_diff.total_seconds() > 60:
+                    ticker = self.ticker()
+                    if ticker is None:
+                        continue
+
+                    ltp = ticker['last']
+                    if (ltp - market_order['price']) * plus_or_minus >= 0:
+                        continue
+
                     risk_order = self.client.cancelOrder(orderID=risk_order['orderID'])
                     gain_order = self.client.cancelOrder(orderID=gain_order['orderID'])
                     market_order = self.client.newOrder(orderQty=qty, ordType="Market", side=new_side)
@@ -290,7 +303,7 @@ class User:
             market_price = ticker['last']
             plus_or_minus = 1 if side == 'Buy' else -1
             gain_price = market_price + ratio * price_multiplier * plus_or_minus
-            risk_price = market_price + 10 * plus_or_minus * -1
+            risk_price = market_price + 5 * plus_or_minus * -1
             new_side = 'Sell' if side == 'Buy' else 'Buy'
 
             gain_order = self.record_order(orderID=uuid.uuid1().hex, ordType="MarketIfTouched", side=new_side,
@@ -311,10 +324,11 @@ class User:
                     remark = 'Loss'
                 else:
                     time_diff = datetime.utcnow() - market_order.timestamp
-                    if time_diff.total_seconds() > 3600:
-                        remark = 'Loss'
-                        risk_order.price = last
-                        risk_order.save()
+                    if time_diff.total_seconds() > 60:
+                        if (last - market_order.price) * plus_or_minus < 0:
+                            remark = 'Loss'
+                            risk_order.price = last
+                            risk_order.save()
 
 
             if remark is 'Gain':

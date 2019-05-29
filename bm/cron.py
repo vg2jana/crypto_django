@@ -33,8 +33,7 @@ class SampleCronJob(CronJobBase):
             count += 1
             logging.info('Iteration starting: {}'.format(count))
             user = User('Close_depths', data['key'], data['secret'], symbol, endpoint)
-            user.worker(dry_run=True)
-            time.sleep(60)
+            user.worker()
             logging.info('Iteration completed: {}'.format(count))
 
 

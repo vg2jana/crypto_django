@@ -2,8 +2,8 @@ import bitmex
 
 class RestClient():
 
-    def __init__(self, key, secret, symbol):
-        self.api = bitmex.bitmex(api_key=key, api_secret=secret)
+    def __init__(self, test, key, secret, symbol):
+        self.api = bitmex.bitmex(test=test, api_key=key, api_secret=secret)
         self.symbol = symbol
 
     def exec_api(self, target, *args, **kwargs):
