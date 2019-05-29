@@ -157,8 +157,10 @@ class User:
         kwargs["ordStatus"] = kwargs.get("ordStatus", "New")
         kwargs["parentOrder"] = self.parent_order
         kwargs = {k: v for k, v in kwargs.items() if k in self.order_attrs}
-        self.logger.info(kwargs)
-        return Order.objects.create(**kwargs)
+        order = Order.objects.create(**kwargs)
+        self.logger.info("NEW Type: {}, Text: {}, Status: {}, Side: {}, Price: {}", order.ordType, order.text,
+                         order.ordStatus, order.side, order.price)
+        return order
 
     def update_order(self, **kwargs):
 
@@ -170,6 +172,8 @@ class User:
         for k, v in kwargs.items():
             order.__setattr__(k, v)
 
+        self.logger.info("UPDATE Type: {}, Text: {}, Status: {}, Side: {}, Price: {}", order.ordType, order.text,
+                         order.ordStatus, order.side, order.price)
         order.save()
 
     def wait_for_close_depths(self, depths=3):
@@ -234,10 +238,12 @@ class User:
 
     def worker(self, qty=1, min_volume=7000000, trigger_ratio=5, price_multiplier=4):
 
+        self.logger.info("Waiting for opportunity")
         # side, ratio = self.wait_for_opportunity(min_volume, trigger_ratio)
         side, ratio = self.wait_for_close_depths()
 
         if self.dry_run is False:
+            self.logger.info("Got opportunity")
             market_order = self.client.newOrder(orderQty=qty, ordType="Market", side=side)
             market_order['text'] = 'First order'
             self.record_order(**market_order)
