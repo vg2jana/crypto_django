@@ -165,7 +165,7 @@ class User:
         min_first_depth = 1200000
         cross_max_vol = 200000
         price = 2
-        
+
         while side is None:
             depth = self.ws.market_depth()
             if depth is None:

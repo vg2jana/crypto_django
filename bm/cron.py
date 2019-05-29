@@ -1,5 +1,6 @@
 import uuid
 import logging
+import time
 from bm.lib.user import User
 from bm.lib.client import RestClient
 
@@ -73,3 +74,4 @@ class SampleCronJob(CronJobBase):
             user.worker()
             logging.info('Iteration completed: {}'.format(count))
             self.log_summary()
+            time.sleep(5)
