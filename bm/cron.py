@@ -1,4 +1,4 @@
-import time
+import uuid
 import logging
 from bm.lib.user import User
 from bm.lib.client import RestClient
@@ -59,7 +59,7 @@ class SampleCronJob(CronJobBase):
         endpoint = data.get('endpoint', "https://www.bitmex.com/api/v1")
         dry_run = True
 
-        user = User('Close_depths', data['key'], data['secret'], symbol, endpoint)
+        user = User(data['key'], data['secret'], symbol, endpoint)
         user.connect_ws()
 
         user.client = RestClient(dry_run, data['key'], data['secret'], symbol)
@@ -69,6 +69,7 @@ class SampleCronJob(CronJobBase):
         while count < 500:
             count += 1
             logging.info('Iteration starting: {}'.format(count))
+            user.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name='Close_depths')
             user.worker()
             logging.info('Iteration completed: {}'.format(count))
             self.log_summary()

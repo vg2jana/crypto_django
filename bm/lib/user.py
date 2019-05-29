@@ -38,7 +38,7 @@ class StabilityTimer:
 
 class User:
 
-    def __init__(self, name, key, secret, symbol, endpoint, dry_run=True):
+    def __init__(self, key, secret, symbol, endpoint, dry_run=True):
 
         self.logger = logging.getLogger()
         self.order_attrs = [f.name for f in Order._meta.get_fields()]
@@ -48,7 +48,7 @@ class User:
         self.symbol = symbol
         self.ws = None
         self.dry_run = dry_run
-        self.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name=name)
+
 
     def connect_ws(self):
         while True:
