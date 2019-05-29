@@ -1,12 +1,11 @@
 import time
 import uuid
-import sys
 import websocket
 import logging
 
 from datetime import datetime
 from bitmex_websocket import BitMEXWebsocket
-from bm.models import ParentOrder, Order
+from bm.models import Order
 
 
 class StabilityTimer:
@@ -142,8 +141,8 @@ class User:
         kwargs["parentOrder"] = self.parent_order
         kwargs = {k: v for k, v in kwargs.items() if k in self.order_attrs}
         order = Order.objects.create(**kwargs)
-        self.logger.info("NEW Type: {}, Text: {}, Status: {}, Side: {}, Price: {}", order.ordType, order.text,
-                         order.ordStatus, order.side, order.price)
+        self.logger.info("NEW Type: {}, Text: {}, Status: {}, Side: {}, Price: {}".format(order.ordType, order.text,
+                         order.ordStatus, order.side, order.price))
         return order
 
     def update_order(self, **kwargs):
@@ -156,8 +155,8 @@ class User:
         for k, v in kwargs.items():
             order.__setattr__(k, v)
 
-        self.logger.info("UPDATE Type: {}, Text: {}, Status: {}, Side: {}, Price: {}", order.ordType, order.text,
-                         order.ordStatus, order.side, order.price)
+        self.logger.info("UPDATE Type: {}, Text: {}, Status: {}, Side: {}, Price: {}".format(order.ordType, order.text,
+                         order.ordStatus, order.side, order.price))
         order.save()
 
     def wait_for_close_depths(self, depths=3):

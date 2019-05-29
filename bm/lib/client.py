@@ -38,7 +38,7 @@ class RestClient():
             if response.status_code != 200:
                 self.logger.warning("Failed to place order with params: {}".format(kwargs))
                 self.logger.warning("Status code: {}, Reason: {}".format(response.status_code, response.reason))
-                self.logger.warning ("Order: {}".format(order))
+                self.logger.warning("Order: {}".format(order))
                 order = None
 
         return order

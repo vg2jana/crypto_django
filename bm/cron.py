@@ -8,7 +8,7 @@ from bm.lib.client import RestClient
 # python3 manage.py runcrons --force
 # python3 manage.py runcrons "bm.cron.SampleCronJob"
 from django_cron import CronJobBase, Schedule
-from bm.models import Order, ParentOrder
+from bm.models import ParentOrder
 
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO, filemode='a', filename='app.log')
 
