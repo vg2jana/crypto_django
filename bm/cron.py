@@ -1,6 +1,7 @@
 import time
 import logging
 from bm.lib.user import User
+from bm.lib.client import RestClient
 
 # from django.conf import settings
 # settings.configure()
@@ -56,13 +57,18 @@ class SampleCronJob(CronJobBase):
 
         symbol = data.get('symbol', 'XBTUSD')
         endpoint = data.get('endpoint', "https://www.bitmex.com/api/v1")
+        dry_run = True
+
+        user = User('Close_depths', data['key'], data['secret'], symbol, endpoint)
+        user.connect_ws()
+
+        user.client = RestClient(dry_run, data['key'], data['secret'], symbol)
+        user.client.connect_api()
 
         count = 0
-
         while count < 500:
             count += 1
             logging.info('Iteration starting: {}'.format(count))
-            user = User('Close_depths', data['key'], data['secret'], symbol, endpoint)
             user.worker()
             logging.info('Iteration completed: {}'.format(count))
             self.log_summary()

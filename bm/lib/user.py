@@ -8,8 +8,6 @@ from datetime import datetime
 from bitmex_websocket import BitMEXWebsocket
 from bm.models import ParentOrder, Order
 
-from bm.lib.client import RestClient
-
 
 class StabilityTimer:
 
@@ -51,21 +49,6 @@ class User:
         self.ws = None
         self.dry_run = dry_run
         self.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name=name)
-
-        self.connect_ws()
-
-        self.connect_api()
-
-    def connect_api(self):
-        while True:
-            self.logger.info('Attempting to connect to REST Client')
-            try:
-                self.client = RestClient(self.dry_run, self.key, self.secret, self.symbol)
-                break
-            except Exception as e:
-                self.logger.warning(e)
-            time.sleep(1)
-        self.logger.info('Connected to REST Client')
 
     def connect_ws(self):
         while True:
