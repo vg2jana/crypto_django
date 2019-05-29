@@ -163,8 +163,9 @@ class User:
 
         side = None
         min_first_depth = 1200000
-        cross_max_vol = 100000
-
+        cross_max_vol = 200000
+        price = 2
+        
         while side is None:
             depth = self.ws.market_depth()
             if depth is None:
@@ -178,11 +179,15 @@ class User:
 
             if bids[0] > min_first_depth and sum_asks < cross_max_vol:
                 side = 'Buy'
+                if min(bids[1], bids[2]) > 500000:
+                    price = 5
 
             if asks[0] > min_first_depth and sum_bids < cross_max_vol:
                 side = 'Sell'
+                if min(asks[1], asks[2]) > 500000:
+                    price = 5
 
-        return side, 1
+        return side, price
 
     def wait_for_opportunity(self, min_volume, trigger_ratio):
         stability_timer = StabilityTimer()
@@ -219,7 +224,7 @@ class User:
         ratio = min(ratio, 5)
         return side, ratio
 
-    def worker(self, qty=1, min_volume=7000000, trigger_ratio=5, price_multiplier=4):
+    def worker(self, qty=1, min_volume=7000000, trigger_ratio=5, price_multiplier=1):
 
         self.logger.info("Waiting for opportunity")
         # side, ratio = self.wait_for_opportunity(min_volume, trigger_ratio)
@@ -234,7 +239,7 @@ class User:
             market_price = market_order['price']
             plus_or_minus = 1 if side == 'Buy' else -1
             gain_price = market_price + ratio * price_multiplier * plus_or_minus
-            risk_price = market_price + 10 * plus_or_minus * -1
+            risk_price = market_price + 5 * plus_or_minus * -1
             new_side = 'Sell' if side == 'Buy' else 'Buy'
 
             gain_order = self.client.newOrder(orderQty=qty, ordType="MarketIfTouched", execInst="LastPrice",
@@ -319,7 +324,6 @@ class User:
                             remark = 'Loss'
                             risk_order.price = last
                             risk_order.save()
-
 
             if remark is 'Gain':
                 gain_order.ordStatus = 'Filled'
