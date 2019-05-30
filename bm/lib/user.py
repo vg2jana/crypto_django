@@ -64,16 +64,17 @@ class User:
         self.logger.info('Connected to WS')
 
     def try_ping(self):
-        if self.ws.ws.sock is None:
-            self.connect_ws()
 
         try:
+            if self.ws.ws.sock is None:
+                self.connect_ws()
             self.ws.ws.sock.ping()
         except websocket.WebSocketConnectionClosedException as e:
             self.logger.warning(e)
             self.connect_ws()
         except Exception as e:
             self.logger.warning(e)
+            self.connect_ws()
 
     def depth_info(self):
         self.try_ping()
