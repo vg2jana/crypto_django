@@ -60,7 +60,7 @@ class SampleCronJob(CronJobBase):
         endpoint = data.get('endpoint', "https://www.bitmex.com/api/v1")
         dry_run = True
 
-        user = User(data['key'], data['secret'], symbol, endpoint)
+        user = User(data['key'], data['secret'], symbol, endpoint, dry_run=dry_run)
         user.connect_ws()
 
         user.client = RestClient(dry_run, data['key'], data['secret'], symbol)

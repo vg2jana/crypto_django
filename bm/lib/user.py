@@ -268,7 +268,7 @@ class User:
                     gain_order = self.client.cancelOrder(orderID=gain_order['orderID'])
                     break
 
-                time_diff = datetime.utcnow() - market_order.timestamp
+                time_diff = datetime.utcnow() - market_order['timestamp'].replace(tzinfo=None)
                 if time_diff.total_seconds() > 60:
                     ticker = self.ticker()
                     if ticker is None:
