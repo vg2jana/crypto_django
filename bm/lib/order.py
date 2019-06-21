@@ -25,12 +25,13 @@ class Order:
 
     def get_status(self):
 
-        executions = [o for o in self.ws.ws.data['execution'] if o['orderID'] in self.orderID]
+        data = self.ws.ws.data['execution']
+        executions = [o for o in data if o['orderID'] in self.orderID]
 
         if len(executions) < 1:
             return
 
-        for k, v in executions[-1]:
+        for k, v in executions[-1].items():
             if hasattr(self, k):
                 setattr(self, k, v)
 
@@ -42,18 +43,19 @@ class Order:
                 break
 
     def new(self, **kwargs):
-        order = self.client.new_order(kwargs)
+        order = self.client.new_order(**kwargs)
 
         if order is None:
             return None
 
+        self.orderID = order['orderID']
         self.wait_for_status('New', 'Filled', 'PartiallyFilled', 'Canceled')
 
         return order
 
     def amend(self, **kwargs):
 
-        order = self.client.amend_order(kwargs)
+        order = self.client.amend_order(**kwargs)
 
         if order is None:
             return None
@@ -64,7 +66,7 @@ class Order:
 
     def cancel(self, **kwargs):
 
-        order = self.client.new_order(kwargs)
+        order = self.client.new_order(**kwargs)
 
         if order is None:
             return None

@@ -139,8 +139,7 @@ class Opportunity:
 
     def buy_or_sell(self):
 
-        side = None
-        while side is None:
+        while True:
             past_12h_bucket = None
             while past_12h_bucket is None:
                 past_12h = datetime.utcnow() - timedelta(hours=12)
@@ -152,20 +151,19 @@ class Opportunity:
 
             low = min(tide)
             high = max(tide)
-            mean = (high - low) / 2
+            mean = (high + low) / 2
 
             ltp = self.ws.ltp()
             stddev = statistics.pstdev(tide)
 
-            if ltp <= (mean - stddev) or ltp >= (mean + stddev):
-                time.sleep(5)
-                continue
+            if ltp >= (mean + stddev):
+                return 'Sell'
+            if ltp <= (mean - stddev):
+                return 'Buy'
 
             funding_rate = self.client.funding_rate()
             if funding_rate is not None:
-                if funding_rate >= 0:
-                    side = 'Buy'
+                if funding_rate['fundingRate'] >= 0:
+                    return 'Buy'
                 else:
-                    side = 'Sell'
-
-        return side
+                    return 'Sell'

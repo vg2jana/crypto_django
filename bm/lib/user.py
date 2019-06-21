@@ -126,7 +126,9 @@ class User:
 
     def worker_incremental_order(self, qty):
 
+        first_order = None
         while True:
+
             side = self.opportunity.buy_or_sell()
             bid_ask = self.ws.bid_ask()
 
@@ -141,16 +143,23 @@ class User:
                 cross_indicator = -1
                 ally_indicator = 1
 
-            first_order = Order(self)
-            status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price, execInst="ParticipateDoNotInitiate")
+            if first_order is None:
+                first_order = Order(self)
+                status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price,
+                                         execInst="ParticipateDoNotInitiate")
 
-            if status is None:
-                continue
+                if status is None:
+                    first_order = None
+                    continue
+
+            if first_order is not None:
+                first_order.get_status()
 
             if first_order.ordStatus == 'Filled':
                 break
 
             elif first_order.ordStatus == 'Canceled':
+                first_order = None
                 continue
 
             if self.diff_ticks(first_order.price) > 5:
@@ -222,9 +231,6 @@ class User:
                 #     past_orders = ally_orders[str(cross_price)]
                 #     for o in past_orders:
                 #         o.get_status()
-                #
-                #     if any([o.workingIndicator is False for o in past_orders]):
-                #         place_order = True
 
                 if place_order is True:
                     order = Order(self)
@@ -246,6 +252,8 @@ class User:
 
                     # Amend the cross order
                     cross_order.amend(orderID=cross_order.orderID, orderQty=total_qty, price=average_price)
+
+            # TODO: Cancel all orders
 
 
     def worker_close_depths(self, qty=1):

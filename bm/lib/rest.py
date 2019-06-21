@@ -127,7 +127,7 @@ class RestClient:
         rate = None
 
         try:
-            rate, response = self.api.Order.Order_getOrders(reverse=True, symbol=self.symbol, count=1).result()
+            rate, response = self.api.Funding.Funding_get(reverse=True, symbol=self.symbol, count=1).result()
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to get funding rate")
