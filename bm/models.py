@@ -8,7 +8,7 @@ class ParentOrder(models.Model):
     name = models.CharField(max_length=200)
 
 
-class Order(models.Model):
+class OrderDB(models.Model):
     parentOrder = models.ForeignKey(ParentOrder, on_delete=models.CASCADE)
     orderID = models.CharField(max_length=30, default='')
     ordType = models.CharField(max_length=20, default='')

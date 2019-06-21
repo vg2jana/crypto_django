@@ -1,38 +1,13 @@
 import time
 import uuid
-import websocket
 import logging
 
 from datetime import datetime
-from bitmex_websocket import BitMEXWebsocket
-from bm.models import Order
-
-
-class StabilityTimer:
-
-    def __init__(self):
-        self.counter = 1
-        self.side = None
-
-    def reset(self):
-        self.counter = 1
-
-    def increment(self):
-        self.counter += 1
-
-    def update(self, side):
-        if self.side is None or side == self.side:
-            self.increment()
-        else:
-            self.reset()
-
-        self.side = side
-
-    def trigger(self):
-        if self.counter > 3:
-            return True
-
-        return False
+from bm.models import OrderDB
+from bm.lib.mywebsocket import MyWebSocket
+from bm.lib.opportunity import Opportunity
+from bm.lib.rest import RestClient
+from bm.lib.order import Order
 
 
 class User:
@@ -40,100 +15,40 @@ class User:
     def __init__(self, key, secret, symbol, endpoint, dry_run=True):
 
         self.logger = logging.getLogger()
-        self.order_attrs = [f.name for f in Order._meta.get_fields()]
+        self.order_attrs = [f.name for f in OrderDB._meta.get_fields()]
         self.endpoint = endpoint
         self.key = key
         self.secret = secret
         self.symbol = symbol
-        self.ws = None
-        self.dry_run = dry_run
+        self.ws = MyWebSocket(endpoint, symbol, key, secret)
+        self.client = RestClient(dry_run, key, secret, symbol)
+        self.opportunity = Opportunity(self.ws, self.client)
         self.parent_order = None
-        self.client = None
+        self.tick_size = self.get_tick_size()
+        self.num_decimals = self.get_num_decimals()
 
-    def connect_ws(self):
-        while True:
-            self.logger.info('Attempting to connect WS')
-            try:
-                self.ws = BitMEXWebsocket(endpoint=self.endpoint, symbol=self.symbol,
-                                          api_key=self.key, api_secret=self.secret)
-                self.ws.get_instrument()
-                break
-            except Exception as e:
-                self.logger.warning(e)
-            time.sleep(1)
-        self.logger.info('Connected to WS')
+    def get_num_decimals(self):
 
-    def try_ping(self):
+        decimals = {
+            'XBTUSD': 1
+        }
 
-        try:
-            if self.ws.ws.sock is None:
-                self.connect_ws()
-            self.ws.ws.sock.ping()
-        except websocket.WebSocketConnectionClosedException as e:
-            self.logger.warning(e)
-            self.connect_ws()
-        except Exception as e:
-            self.logger.warning(e)
-            self.connect_ws()
+        return decimals[self.symbol]
 
-    def depth_info(self):
-        self.try_ping()
-        try:
-            return self.ws.market_depth()
-        except Exception as e:
-            self.logger.warning("Error fetching market depth")
-            self.logger.warning(e)
+    def get_tick_size(self):
 
-        return None
+        ticks = {
+            'XBTUSD': 0.5
+        }
 
-    def ticker(self):
-        self.try_ping()
-        try:
-            return self.ws.get_ticker()
-        except Exception as e:
-            self.logger.warning("Error fetching ticker")
-            self.logger.warning(e)
+        return ticks[self.symbol]
 
-        return None
+    def diff_ticks(self, price, base=None):
 
-    def open_orders(self):
-        self.try_ping()
-        try:
-            return self.ws.open_orders('')
-        except Exception as e:
-            self.logger.warning("Error fetching Open orders")
-            self.logger.warning(e)
+        if base is None:
+            base = self.ws.ltp()
 
-        return None
-
-    def bid_ask_size(self):
-        depth = None
-        while depth is None:
-            depth = self.depth_info()
-
-        mid_price = self.ticker()['mid']
-        level_up = mid_price + mid_price * 0.001
-        level_down = mid_price - mid_price * 0.001
-
-        bids = 0
-        asks = 0
-        for d in depth:
-            side = d['side']
-            price = d['price']
-            size = d['size']
-            if side == 'Buy':
-                if price < level_down:
-                    continue
-                bids += size
-            else:
-                if price > level_up:
-                    continue
-                asks += size
-
-            if price < level_down and price > level_up:
-                break
-
-        return (bids, asks)
+        return (base - price) / self.tick_size
 
     def record_order(self, **kwargs):
 
@@ -141,7 +56,7 @@ class User:
         kwargs["ordStatus"] = kwargs.get("ordStatus", "New")
         kwargs["parentOrder"] = self.parent_order
         kwargs = {k: v for k, v in kwargs.items() if k in self.order_attrs}
-        order = Order.objects.create(**kwargs)
+        order = OrderDB.objects.create(**kwargs)
         self.logger.info("NEW Type: {}, Text: {}, Status: {}, Side: {}, Price: {}".format(order.ordType, order.text,
                          order.ordStatus, order.side, order.price))
         return order
@@ -150,191 +65,306 @@ class User:
 
         self.logger.info(kwargs)
         order_id = kwargs.pop('orderID')
-        self.client.getOrder(orderID=order_id)
+        self.client.get_order(orderID=order_id)
 
-        order = Order.objects.filter(orderID__exact=order_id).first()
+        order = OrderDB.objects.filter(orderID__exact=order_id).first()
         for k, v in kwargs.items():
             order.__setattr__(k, v)
 
         self.logger.info("UPDATE Type: {}, Text: {}, Status: {}, Side: {}, Price: {}".format(order.ordType, order.text,
                          order.ordStatus, order.side, order.price))
         order.save()
+        return order
 
-    def wait_for_close_depths(self, depths=3):
+    def wait_for_execution(self, orderIDs, wait=False, status=('Canceled', 'Filled')):
+        if type(orderIDs) is str:
+            orderIDs = [orderIDs, ]
 
-        side = None
-        min_first_depth = 1200000
-        cross_max_vol = 200000
-        price = 2
+        executions = [o for o in self.ws.ws.data['execution'] if o['orderID'] in orderIDs]
 
-        while side is None:
-            depth = self.ws.market_depth()
-            if depth is None:
+        order_status = None
+        while order_status is None:
+            for e in executions:
+                if e['ordStatus'] in status:
+                    order_status = e
+                    break
+
+            if wait is False:
+                break
+
+        return order_status
+
+    def make_first_order(self, side, qty, price):
+
+        order_status = None
+        first_order = None
+        while order_status is None:
+            if first_order is None:
+                while True:
+                    first_order = self.client.new_order(orderQty=qty, ordType="Limit", side=side,
+                                                       price=price, execInst="ParticipateDoNotInitiate")
+                    if first_order is not None:
+                        break
+                first_order['text'] = 'First order'
+                first_order = self.record_order(**first_order)
+
+            # order_status = self.client.getOrder(filter='{"orderID": "%s"}' % first_order.orderID)
+            order_status = self.wait_for_execution(first_order.orderID)
+
+            # time_diff = datetime.utcnow() - first_order.timestamp.replace(tzinfo=None)
+            ticker = self.ws.ticker()
+            if ticker is None:
                 continue
 
-            bids = [x[1] for x in depth[0]['bids'][:depths]]
-            asks = [x[1] for x in depth[0]['asks'][:depths]]
+            if order_status is None and abs(ticker['last'] - first_order.price) > 5:
+                order_status = self.client.cancel_order(orderID=first_order.orderID)
+                self.update_order(**order_status)
+                first_order = None
+                order_status = None
 
-            sum_bids = sum(bids)
-            sum_asks = sum(asks)
+        return self.update_order(**order_status)
 
-            if bids[0] > min_first_depth and sum_asks < cross_max_vol:
-                side = 'Buy'
-                if min(bids[1], bids[2]) > 500000:
-                    price = 5
-
-            if asks[0] > min_first_depth and sum_bids < cross_max_vol:
-                side = 'Sell'
-                if min(asks[1], asks[2]) > 500000:
-                    price = 5
-
-        return side, price
-
-    def wait_for_opportunity(self, min_volume, trigger_ratio):
-        stability_timer = StabilityTimer()
+    def worker_incremental_order(self, qty):
 
         while True:
-            time.sleep(stability_timer.counter)
-            (bids, asks) = self.bid_ask_size()
+            side = self.opportunity.buy_or_sell()
+            bid_ask = self.ws.bid_ask()
 
-            if bids == 0 or asks == 0:
-                stability_timer.reset()
-                continue
-
-            if bids > asks:
-                ratio = int(bids / asks)
-                side = "Buy"
+            if side == 'Buy':
+                price = bid_ask['bid']['price'][0]
+                cross_side = 'Sell'
+                cross_indicator = 1
+                ally_indicator = -1
             else:
-                ratio = int(asks / bids)
-                side = "Sell"
+                price = bid_ask['ask']['price'][0]
+                cross_side = 'Buy'
+                cross_indicator = -1
+                ally_indicator = 1
 
-            if max(bids, asks) < min_volume:
-                stability_timer.reset()
+            first_order = Order(self)
+            status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price, execInst="ParticipateDoNotInitiate")
+
+            if status is None:
                 continue
 
-            if ratio < trigger_ratio:
-                stability_timer.reset()
+            if first_order.ordStatus == 'Filled':
+                break
+
+            elif first_order.ordStatus == 'Canceled':
                 continue
 
-            stability_timer.update(side)
-            if stability_timer.trigger() is False:
+            if self.diff_ticks(first_order.price) > 5:
+                first_order.cancel()
+
+        incremental_tick = 20
+        # Place first cross order
+        while True:
+
+            cross_order = Order(self)
+            cross_price = first_order.price + (incremental_tick * cross_indicator)
+
+            status = cross_order.new(orderQty=qty, ordType="Limit", side=cross_side, price=cross_price,
+                                     execInst="ParticipateDoNotInitiate")
+
+            if status is None:
+                continue
+
+            if first_order.ordStatus == 'Filled':
+                break
+
+            elif first_order.ordStatus == 'Canceled':
+                continue
+
+        ally_orders = {}
+
+        while True:
+
+            # Get status of cross order and break if it is fully filled
+            cross_order.get_status()
+            if cross_order.ordStatus == 'Filled':
+                break
+
+            # Do not take any action if ltp is towards gain
+            ltp = self.ws.ltp()
+            if (side == 'Buy' and ltp > first_order.price) or \
+                (side == 'Sell' and ltp < first_order.price):
+                continue
+
+            # Keep placing incremental orders on same side if ltp is against gain
+            order = None
+            ally_price = first_order.price
+            ally_side = first_order.side
+            place_order = False
+            while order is None:
+
+                diff_ticks = self.diff_ticks(cross_order.price, base=ltp)
+                ally_price += incremental_tick * self.tick_size * ally_indicator
+                ally_qty = int(diff_ticks / incremental_tick) * first_order.orderQty
+
+                if (ally_side == 'Buy' and ltp < ally_price) or \
+                        (ally_side == 'Sell' and ltp > ally_price):
+                    continue
+
+                # Restrict the number of open ally orders
+                open_orders = self.ws.open_orders()
+                open_qtys = [o['orderQty'] for o in open_orders if o['side'] == ally_side]
+                if ally_qty in open_qtys:
+                    continue
+
+                elif len(open_qtys) > 3 and ally_qty >= max(open_qtys):
+                    break
+
+                if len(ally_orders) == 0:
+                    ally_orders[str(cross_price)] = []
+                    place_order = True
+
+                # elif str(ally_price) in ally_orders:
+                #     past_orders = ally_orders[str(cross_price)]
+                #     for o in past_orders:
+                #         o.get_status()
+                #
+                #     if any([o.workingIndicator is False for o in past_orders]):
+                #         place_order = True
+
+                if place_order is True:
+                    order = Order(self)
+                    order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
+                                price=ally_price, execInst="ParticipateDoNotInitiate")
+
+                    ally_orders[str(cross_price)].append(order)
+
+                    total_qty = 0
+                    total_price = 0
+                    for price, orders in ally_orders.items():
+                        for o in orders:
+                            o.get_status()
+                            total_qty += o.cumQty
+                            total_price += price * o.cumQty
+
+                    average_price = total_price / total_qty
+                    average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
+
+                    # Amend the cross order
+                    cross_order.amend(orderID=cross_order.orderID, orderQty=total_qty, price=average_price)
+
+
+    def worker_close_depths(self, qty=1):
+        while True:
+            self.logger.info("Waiting for opportunity")
+
+            side, start_price, ratio = self.opportunity.wait_for_close_depths(depths=1)
+            # side, start_price, ratio = 'Buy', self.ws.market_depth()[0]['bids'][0][0], 2
+
+            self.logger.info("Got opportunity")
+
+            first_order = self.make_first_order(side, qty, start_price)
+            if first_order.ordStatus == 'Filled':
+                break
+
+        market_price = first_order.price
+        plus_or_minus = 1 if side == 'Buy' else -1
+        gain_price = market_price + ratio * plus_or_minus
+        risk_price = market_price + 5 * plus_or_minus * -1
+        new_side = 'Sell' if side == 'Buy' else 'Buy'
+
+        gain_order = self.client.new_order(orderQty=qty, ordType="Limit", side=new_side, price=gain_price)
+        gain_order['text'] = 'Gain order'
+        self.record_order(**gain_order)
+
+        risk_order = self.client.new_order(orderQty=qty, ordType="StopLimit", execInst="LastPrice",
+                                           stopPx=risk_price + (2 * plus_or_minus), side=new_side, price=risk_price)
+        risk_order['text'] = 'Risk order'
+        self.record_order(**risk_order)
+
+        while True:
+
+            for e in self.ws.ws.data['execution']:
+                if e['ordStatus'] in ('Canceled', 'Filled'):
+                    if e['orderID'] == risk_order['orderID']:
+                        risk_order = e
+                        gain_order = self.client.cancel_order(orderID=risk_order['orderID'])
+                        break
+                    elif e['orderID'] == gain_order['orderID']:
+                        gain_order = e
+                        risk_order = self.client.cancel_order(orderID=risk_order['orderID'])
+                        break
+            else:
                 continue
 
             break
 
-        ratio = min(ratio, 5)
-        return side, ratio
+            # time_diff = datetime.utcnow() - first_order['timestamp'].replace(tzinfo=None)
+            # if time_diff.total_seconds() > 600:
+            #     ticker = self.ticker()
+            #     if ticker is None:
+            #         continue
+            #
+            #     ltp = ticker['last']
+            #     if (ltp - first_order['price']) * plus_or_minus >= 0:
+            #         continue
+            #
+            #     risk_order = self.client.cancelOrder(orderID=risk_order['orderID'])
+            #     gain_order = self.client.cancelOrder(orderID=gain_order['orderID'])
+            #     first_order = self.client.newOrder(orderQty=qty, ordType="Market", side=new_side)
+            #     first_order['text'] = 'Risk order'
+            #     self.record_order(**first_order)
 
-    def worker(self, qty=1, min_volume=7000000, trigger_ratio=5, price_multiplier=1):
+        self.update_order(**gain_order)
+        self.update_order(**risk_order)
 
+    def simulate(self, qty=1):
         self.logger.info("Waiting for opportunity")
-        # side, ratio = self.wait_for_opportunity(min_volume, trigger_ratio)
-        side, ratio = self.wait_for_close_depths()
 
-        if self.dry_run is False:
-            self.logger.info("Got opportunity")
-            market_order = self.client.newOrder(orderQty=qty, ordType="Market", side=side)
-            market_order['text'] = 'First order'
-            self.record_order(**market_order)
+        side, start_price, ratio = self.opportunity.wait_for_close_depths()
 
-            market_price = market_order['price']
-            plus_or_minus = 1 if side == 'Buy' else -1
-            gain_price = market_price + ratio * price_multiplier * plus_or_minus
-            risk_price = market_price + 5 * plus_or_minus * -1
-            new_side = 'Sell' if side == 'Buy' else 'Buy'
+        self.logger.info("Got opportunity")
+        ticker = self.ws.ticker()
+        if ticker is None:
+            return
 
-            gain_order = self.client.newOrder(orderQty=qty, ordType="MarketIfTouched", execInst="LastPrice",
-                                               stopPx=gain_price, side=new_side)
-            gain_order['text'] = 'Gain order'
-            self.record_order(**gain_order)
+        first_order = self.record_order(orderID=uuid.uuid1().hex, ordType="Market", side=side,
+                                          price=ticker['last'], timestamp=datetime.utcnow(),
+                                          remark="First order", ordStatus="Filled")
 
-            risk_order = self.client.newOrder(orderQty=qty, ordType="StopMarket", execInst="LastPrice",
-                                               stopPx=risk_price, side=new_side)
-            risk_order['text'] = 'Risk order'
-            self.record_order(**risk_order)
+        market_price = ticker['last']
+        plus_or_minus = 1 if side == 'Buy' else -1
+        gain_price = market_price + ratio * plus_or_minus
+        risk_price = market_price + 5 * plus_or_minus * -1
+        new_side = 'Sell' if side == 'Buy' else 'Buy'
 
-            while True:
+        gain_order = self.record_order(orderID=uuid.uuid1().hex, ordType="MarketIfTouched", side=new_side,
+                                       price=gain_price, timestamp=datetime.utcnow(), text="Gain order")
+        risk_order = self.record_order(orderID=uuid.uuid1().hex, ordType="StopMarket", side=new_side,
+                                       price=risk_price, timestamp=datetime.utcnow(), text="Risk order")
 
-                orders = self.client.openOrders()
-                if orders is None:
-                    continue
+        remark = None
+        while remark is None:
+            t = self.ws.ticker()
+            if t is None:
+                continue
 
-                order_ids = [o['orderID'] for o in orders]
-
-                if gain_order['orderID'] not in order_ids:
-                    risk_order = self.client.cancelOrder(orderID=risk_order['orderID'])
-                    break
-                elif risk_order['orderID'] not in order_ids:
-                    gain_order = self.client.cancelOrder(orderID=gain_order['orderID'])
-                    break
-
-                time_diff = datetime.utcnow() - market_order['timestamp'].replace(tzinfo=None)
-                if time_diff.total_seconds() > 60:
-                    ticker = self.ticker()
-                    if ticker is None:
-                        continue
-
-                    ltp = ticker['last']
-                    if (ltp - market_order['price']) * plus_or_minus >= 0:
-                        continue
-
-                    risk_order = self.client.cancelOrder(orderID=risk_order['orderID'])
-                    gain_order = self.client.cancelOrder(orderID=gain_order['orderID'])
-                    market_order = self.client.newOrder(orderQty=qty, ordType="Market", side=new_side)
-                    market_order['text'] = 'Risk order'
-                    self.record_order(**market_order)
-
-            self.update_order(**gain_order)
-            self.update_order(**risk_order)
-
-        else:
-            ticker = self.ticker()
-            if ticker is None:
-                return
-
-            market_order = self.record_order(orderID=uuid.uuid1().hex, ordType="Market", side=side,
-                                              price=ticker['last'], timestamp=datetime.utcnow(),
-                                              remark="First order", ordStatus="Filled")
-
-            market_price = ticker['last']
-            plus_or_minus = 1 if side == 'Buy' else -1
-            gain_price = market_price + ratio * price_multiplier * plus_or_minus
-            risk_price = market_price + 5 * plus_or_minus * -1
-            new_side = 'Sell' if side == 'Buy' else 'Buy'
-
-            gain_order = self.record_order(orderID=uuid.uuid1().hex, ordType="MarketIfTouched", side=new_side,
-                                           price=gain_price, timestamp=datetime.utcnow(), text="Gain order")
-            risk_order = self.record_order(orderID=uuid.uuid1().hex, ordType="StopMarket", side=new_side,
-                                           price=risk_price, timestamp=datetime.utcnow(), text="Risk order")
-
-            remark = None
-            while remark is None:
-                t = self.ticker()
-                if t is None:
-                    continue
-
-                last = t['last']
-                if (new_side == 'Buy' and last <= gain_price) or (new_side == 'Sell' and last >= gain_price):
-                    remark = 'Gain'
-                elif (new_side == 'Buy' and last >= risk_price) or (new_side == 'Sell' and last <= risk_price):
-                    remark = 'Loss'
-                else:
-                    time_diff = datetime.utcnow() - market_order.timestamp
-                    if time_diff.total_seconds() > 60:
-                        if (last - market_order.price) * plus_or_minus < 0:
-                            remark = 'Loss'
-                            risk_order.price = last
-                            risk_order.save()
-
-            if remark is 'Gain':
-                gain_order.ordStatus = 'Filled'
-                risk_order.ordStatus = 'Canceled'
+            last = t['last']
+            if (new_side == 'Buy' and last <= gain_price) or (new_side == 'Sell' and last >= gain_price):
+                remark = 'Gain'
+            elif (new_side == 'Buy' and last >= risk_price) or (new_side == 'Sell' and last <= risk_price):
+                remark = 'Loss'
             else:
-                gain_order.ordStatus = 'Canceled'
-                risk_order.ordStatus = 'Filled'
+                time_diff = datetime.utcnow() - first_order.timestamp
+                if time_diff.total_seconds() > 60:
+                    if (last - first_order.price) * plus_or_minus < 0:
+                        remark = 'Loss'
+                        risk_order.price = last
+                        risk_order.save()
 
-            gain_order.timestamp = datetime.utcnow()
-            risk_order.timestamp = datetime.utcnow()
+        if remark is 'Gain':
+            gain_order.ordStatus = 'Filled'
+            risk_order.ordStatus = 'Canceled'
+        else:
+            gain_order.ordStatus = 'Canceled'
+            risk_order.ordStatus = 'Filled'
 
-            gain_order.save()
-            risk_order.save()
+        gain_order.timestamp = datetime.utcnow()
+        risk_order.timestamp = datetime.utcnow()
+
+        gain_order.save()
+        risk_order.save()
