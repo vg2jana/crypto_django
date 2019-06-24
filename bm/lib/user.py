@@ -153,7 +153,7 @@ class User:
                     continue
 
             if first_order is not None:
-                first_order.get_status()
+                first_order.wait_for_status('New', 'Filled', 'PartiallyFilled', 'Canceled')
 
             if first_order.ordStatus == 'Filled':
                 break
