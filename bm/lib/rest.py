@@ -46,7 +46,6 @@ class RestClient:
 
     def amend_order(self, **kwargs):
 
-        kwargs['symbol'] = self.symbol
         order = None
 
         try:
@@ -83,6 +82,23 @@ class RestClient:
             order = order[0]
 
         return order
+
+    def cancel_all(self):
+
+        orders = None
+
+        try:
+            orders, response = self.api.Order.Order_cancelAll().result()
+        except Exception as e:
+            self.logger.warning(e)
+            self.logger.warning("Failed to cancel all orders")
+        else:
+            if response.status_code != 200:
+                self.logger.warning("Failed to cancel all orders")
+                self.logger.warning("Status code: {}, Reason: {}".format(response.status_code, response.reason))
+                orders = None
+
+        return orders
 
     def get_order(self, **kwargs):
 
