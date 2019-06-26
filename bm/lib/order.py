@@ -64,13 +64,13 @@ class Order:
 
         return order
 
-    def cancel(self, **kwargs):
+    def cancel(self):
 
-        order = self.client.new_order(**kwargs)
+        order = self.client.cancel_order(orderID=self.orderID)
 
         if order is None:
             return None
 
-        self.wait_for_status('Canceled')
+        self.wait_for_status('Filled', 'PartiallyFilled', 'Canceled')
 
         return order

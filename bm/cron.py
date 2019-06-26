@@ -66,7 +66,7 @@ class SampleCronJob(CronJobBase):
             count += 1
             logging.info('Iteration starting: {}'.format(count))
             user.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name='Incremental quantity')
-            user.worker_incremental_order(100)
+            user.worker_incremental_order(10)
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()
             time.sleep(5)

@@ -166,6 +166,7 @@ class User:
 
             if abs(self.diff_ticks(first_order.price)) > 10:
                 first_order.cancel()
+                time.sleep(1)
 
         first_order.get_status()
         incremental_tick = 20
@@ -192,54 +193,46 @@ class User:
             if cross_order.ordStatus == 'Filled':
                 break
 
-            # Do not take any action if ltp is towards gain
+            # Restrict the number of open ally orders
+            open_orders = self.ws.open_orders()
+            open_qtys = [o['orderQty'] for o in open_orders if o['side'] == ally_side]
+
             ltp = self.ws.ltp()
-            # if (side == 'Buy' and ltp > first_order.price) or \
-            #     (side == 'Sell' and ltp < first_order.price):
-            #     continue
 
             # Keep placing incremental orders on same side if ltp is against gain
-            order = None
             ally_side = first_order.side
-            while order is None:
 
-                diff_ticks = abs(self.diff_ticks(first_order.price, base=ltp))
-                incremental_factor = 1 + int(diff_ticks / incremental_tick)
-                ally_price = first_order.price + (incremental_tick * self.tick_size * incremental_factor * ally_indicator)
-                ally_qty = incremental_factor * first_order.cumQty
+            diff_ticks = abs(self.diff_ticks(first_order.price, base=ltp))
+            incremental_factor = 1 + int(diff_ticks / incremental_tick)
+            ally_price = first_order.price + (incremental_tick * self.tick_size * incremental_factor * ally_indicator)
+            ally_qty = incremental_factor * first_order.cumQty
 
-                # if (ally_side == 'Buy' and ltp < ally_price) or \
-                #         (ally_side == 'Sell' and ltp > ally_price):
-                #     continue
+            if ally_qty not in open_qtys and (len(open_qtys) <= 3 or ally_qty < max(open_qtys)):
 
-                # Restrict the number of open ally orders
-                open_orders = self.ws.open_orders()
-                open_qtys = [o['orderQty'] for o in open_orders if o['side'] == ally_side]
-                if ally_qty in open_qtys:
-                    continue
+                if str(ally_price) not in ally_orders:
+                    ally_orders[str(ally_price)] = []
 
-                elif len(open_qtys) > 3 and ally_qty >= max(open_qtys):
-                    break
+                if len(ally_orders[str(ally_price)]) < 3:
+                    order = Order(self)
+                    order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
+                                price=ally_price, execInst="ParticipateDoNotInitiate")
 
-                if str(cross_price) not in ally_orders:
-                    ally_orders[str(cross_price)] = []
+                    if order is not None:
+                        ally_orders[str(ally_price)].append(order)
+                        if order.ordStatus == 'Canceled':
+                            time.sleep(1)
 
-                order = Order(self)
-                order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
-                            price=ally_price, execInst="ParticipateDoNotInitiate")
-
-                ally_orders[str(cross_price)].append(order)
-
-            total_cum_qty = 0
-            total_price = 0
+            total_cum_qty = first_order.cumQty
+            total_price = first_order.price * first_order.cumQty
             for price, orders in ally_orders.items():
                 for o in orders:
                     o.get_status()
-                    total_cum_qty += o.cumQty
-                    total_price += float(price) * o.cumQty
+                    if o.cumQty > 0:
+                        total_cum_qty += o.cumQty
+                        total_price += float(price) * o.cumQty
 
-            if total_cum_qty > 0 and total_cum_qty != cross_order.orderQty:
-                average_price = total_price / total_cum_qty
+            if total_cum_qty != cross_order.orderQty:
+                average_price = total_price / total_cum_qty + (incremental_tick * self.tick_size * cross_indicator)
                 average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
 
                 # Amend the cross order
