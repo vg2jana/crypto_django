@@ -177,3 +177,23 @@ class RestClient:
                 result = None
 
         return result
+
+    def open_position(self):
+
+        position = None
+
+        try:
+            position, response = self.api.Position.Position_get(filter='{"symbol": "%s"}' % self.symbol).result()
+        except Exception as e:
+            self.logger.warning(e)
+            self.logger.warning("Failed to fetch open position")
+        else:
+            if response.status_code != 200:
+                self.logger.warning("Failed to fetch open position")
+                self.logger.warning("Status code: {}, Reason: {}".format(response.status_code, response.reason))
+                position = None
+
+        if position is not None and len(position) > 0:
+            position = position[0]
+
+        return position

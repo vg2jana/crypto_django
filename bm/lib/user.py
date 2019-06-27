@@ -124,52 +124,95 @@ class User:
 
         return self.update_order(**order_status)
 
-    def worker_incremental_order(self, qty):
+    def move_and_fill(self, side, qty, limit_price):
 
-        first_order = None
+        order = None
         while True:
+            bid_ask = self.ws.bid_ask()
+            if side == 'Buy':
+                price = bid_ask['bid']['price'][0]
+            else:
+                price = bid_ask['ask']['price'][0]
 
-            if first_order is None:
-                side = self.opportunity.buy_or_sell()
-                bid_ask = self.ws.bid_ask()
+            if (side == 'Buy' and price > limit_price) or (side == 'Sell' and price < limit_price):
+                order.cancel()
+                time.sleep(1)
+                break
 
-                if side == 'Buy':
-                    price = bid_ask['bid']['price'][0]
-                    cross_side = 'Sell'
-                    cross_indicator = 1
-                    ally_indicator = -1
-                else:
-                    price = bid_ask['ask']['price'][0]
-                    cross_side = 'Buy'
-                    cross_indicator = -1
-                    ally_indicator = 1
-
-
-                first_order = Order(self)
-                status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price,
+            if order is None:
+                order = Order(self)
+                status = order.new(orderQty=qty, ordType="Limit", side=side, price=price,
                                          execInst="ParticipateDoNotInitiate")
 
                 if status is None:
+                    order = None
+                    continue
+
+            order.get_status()
+
+            if order.ordStatus in ('Filled',):
+                break
+
+            elif order.ordStatus == 'Canceled':
+                qty -= order.cumQty
+                order = None
+                continue
+
+            if abs(self.diff_ticks(order.price)) > 10:
+                order.cancel()
+                time.sleep(1)
+
+        return order
+
+    def worker_incremental_order(self, qty, first_order=None, incremental_tick=20):
+
+        if first_order is None:
+            while True:
+
+                if first_order is None:
+                    side = self.opportunity.buy_or_sell()
+                    bid_ask = self.ws.bid_ask()
+
+                    if side == 'Buy':
+                        price = bid_ask['bid']['price'][0]
+                    else:
+                        price = bid_ask['ask']['price'][0]
+
+                    first_order = Order(self)
+                    status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price,
+                                             execInst="ParticipateDoNotInitiate")
+
+                    if status is None:
+                        first_order = None
+                        continue
+
+                first_order.get_status()
+
+                if first_order.ordStatus in ('Filled',):
+                    break
+
+                elif first_order.ordStatus == 'Canceled':
+                    if first_order.cumQty > 0:
+                        break
                     first_order = None
                     continue
 
+                if abs(self.diff_ticks(first_order.price)) > 10:
+                    first_order.cancel()
+                    time.sleep(1)
+
             first_order.get_status()
 
-            if first_order.ordStatus in ('Filled',):
-                break
+        side = first_order.side
+        if side == 'Buy':
+            cross_side = 'Sell'
+            cross_indicator = 1
+            ally_indicator = -1
+        else:
+            cross_side = 'Buy'
+            cross_indicator = -1
+            ally_indicator = 1
 
-            elif first_order.ordStatus == 'Canceled':
-                if first_order.cumQty > 0:
-                    break
-                first_order = None
-                continue
-
-            if abs(self.diff_ticks(first_order.price)) > 10:
-                first_order.cancel()
-                time.sleep(1)
-
-        first_order.get_status()
-        incremental_tick = 20
         # Place first cross order
         while True:
 
@@ -182,42 +225,51 @@ class User:
             if status is None:
                 continue
 
+            cross_order.get_status()
+            time.sleep(1)
+
+            if cross_order.ordStatus == 'Canceled':
+                time.sleep(1)
+                continue
+
             break
 
         ally_orders = {}
+        past_qtys = []
+        ally_side = first_order.side
 
         while True:
 
             # Get status of cross order and break if it is fully filled
             cross_order.get_status()
-            if cross_order.ordStatus == 'Filled':
+            if cross_order.ordStatus in ('Filled', 'Canceled'):
                 break
 
-            # Restrict the number of open ally orders
+            # Get open orders
             open_orders = self.ws.open_orders()
             open_qtys = [o['orderQty'] for o in open_orders if o['side'] == ally_side]
 
             ltp = self.ws.ltp()
 
-            # Keep placing incremental orders on same side if ltp is against gain
-            ally_side = first_order.side
-
+            # Keep placing incremental orders on same side
             diff_ticks = abs(self.diff_ticks(first_order.price, base=ltp))
             incremental_factor = 1 + int(diff_ticks / incremental_tick)
             ally_price = first_order.price + (incremental_tick * self.tick_size * incremental_factor * ally_indicator)
-            ally_qty = incremental_factor * first_order.cumQty
+            ally_qty = incremental_factor * qty
 
+
+            # Restrict the number of open ally orders
             if ally_qty not in open_qtys and (len(open_qtys) <= 3 or ally_qty < max(open_qtys)):
 
                 if str(ally_price) not in ally_orders:
                     ally_orders[str(ally_price)] = []
 
-                if len(ally_orders[str(ally_price)]) < 3:
+                if len(past_qtys) == 0 or ally_qty >= (max(past_qtys) / 2):
                     order = Order(self)
-                    order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
-                                price=ally_price, execInst="ParticipateDoNotInitiate")
+                    status = order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
+                                        price=ally_price, execInst="ParticipateDoNotInitiate")
 
-                    if order is not None:
+                    if status is not None:
                         ally_orders[str(ally_price)].append(order)
                         if order.ordStatus == 'Canceled':
                             time.sleep(1)
@@ -230,6 +282,8 @@ class User:
                     if o.cumQty > 0:
                         total_cum_qty += o.cumQty
                         total_price += float(price) * o.cumQty
+                        if o.orderQty not in past_qtys:
+                            past_qtys.append(o.orderQty)
 
             if total_cum_qty != cross_order.orderQty:
                 average_price = total_price / total_cum_qty + (incremental_tick * self.tick_size * cross_indicator)

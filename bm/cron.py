@@ -2,7 +2,7 @@ import uuid
 import logging
 import time
 from bm.lib.user import User
-from bm.lib.rest import RestClient
+from bm.lib.order import Order
 
 # from django.conf import settings
 # settings.configure()
@@ -48,6 +48,22 @@ class SampleCronJob(CronJobBase):
         logging.info("SUMMARY:\nTotal iterations: {}\nGain: {}\nLoss: {}\nNet: {}\n".format(ParentOrder.objects.count(),
                                                                                             gain, loss, gain - loss))
 
+    def generate_open_order(self, user):
+        open_order = None
+        position = user.client.open_position()
+        if position is not None and position.get('isOpen', False) is True:
+            open_order = Order(user)
+            open_order.orderQty = position['currentQty']
+            open_order.cumQty = abs(position['currentQty'])
+            open_order.price = round(user.tick_size * round(position['avgEntryPrice'] / user.tick_size),
+                                     user.num_decimals)
+            if position['currentQty'] > 0:
+                open_order.side = 'Buy'
+            else:
+                open_order.side = 'Sell'
+
+        return open_order
+
     def do(self):
 
         data = {}
@@ -62,11 +78,28 @@ class SampleCronJob(CronJobBase):
         user = User(data['key'], data['secret'], symbol, endpoint, dry_run=True)
 
         count = 0
+        incremental_tick = 20
         while count < 500:
             count += 1
             logging.info('Iteration starting: {}'.format(count))
             user.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name='Incremental quantity')
-            user.worker_incremental_order(10)
+
+            open_order = self.generate_open_order(user)
+
+            # See if price is in better gain
+            if open_order is not None:
+                if open_order.side == 'Buy':
+                    cross_indicator = 1
+                    side = 'Sell'
+                else:
+                    cross_indicator = -1
+                    side = 'Buy'
+                limit_price = open_order.price + (incremental_tick * user.tick_size * cross_indicator)
+                user.move_and_fill(side, open_order.cumQty, limit_price)
+
+            open_order = self.generate_open_order(user)
+            user.worker_incremental_order(2, first_order=open_order, incremental_tick=incremental_tick)
+
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()
             time.sleep(5)
