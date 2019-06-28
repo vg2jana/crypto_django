@@ -78,8 +78,8 @@ class SampleCronJob(CronJobBase):
         user = User(data['key'], data['secret'], symbol, endpoint, dry_run=True)
 
         count = 0
-        incremental_tick = 20
-        while count < 500:
+        incremental_tick = 50
+        while count < 10:
             count += 1
             logging.info('Iteration starting: {}'.format(count))
             user.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name='Incremental quantity')
@@ -98,9 +98,11 @@ class SampleCronJob(CronJobBase):
                 user.move_and_fill(side, open_order.cumQty, limit_price)
 
             open_order = self.generate_open_order(user)
-            user.worker_incremental_order(2, first_order=open_order, incremental_tick=incremental_tick)
+            user.worker_incremental_order(100, first_order=open_order, incremental_tick=incremental_tick)
 
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()
             time.sleep(5)
-            break
+
+            # Clear execution data
+            user.ws.clear_executions()

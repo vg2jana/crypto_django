@@ -26,7 +26,7 @@ class Order:
     def get_status(self):
 
         data = self.ws.ws.data['execution']
-        executions = [o for o in data if o['orderID'] in self.orderID]
+        executions = [o for o in data if o['orderID'] == self.orderID]
 
         if len(executions) < 1:
             return
@@ -50,6 +50,11 @@ class Order:
 
         self.orderID = order['orderID']
         self.wait_for_status('New', 'Filled', 'PartiallyFilled', 'Canceled')
+        self.logging.info("New order => OrderID: {}, Qty: {}, Price: {}, Side: {}, Status: {}".format(self.orderID,
+                                                                                                      self.orderQty,
+                                                                                                      self.price,
+                                                                                                      self.side,
+                                                                                                      self.ordStatus))
 
         return order
 
@@ -61,6 +66,11 @@ class Order:
             return None
 
         self.wait_for_status('New', 'Filled', 'PartiallyFilled', 'Canceled')
+        self.logging.info("Amend order => OrderID: {}, Qty: {}, Price: {}, Side: {}, Status: {}".format(self.orderID,
+                                                                                                        self.orderQty,
+                                                                                                        self.price,
+                                                                                                        self.side,
+                                                                                                        self.ordStatus))
 
         return order
 
@@ -72,5 +82,10 @@ class Order:
             return None
 
         self.wait_for_status('Filled', 'PartiallyFilled', 'Canceled')
+        self.logging.info("Cancel order => OrderID: {}, Qty: {}, Price: {}, Side: {}, Status: {}".format(self.orderID,
+                                                                                                         self.orderQty,
+                                                                                                         self.price,
+                                                                                                         self.side,
+                                                                                                         self.ordStatus))
 
         return order

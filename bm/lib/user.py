@@ -135,8 +135,9 @@ class User:
                 price = bid_ask['ask']['price'][0]
 
             if (side == 'Buy' and price > limit_price) or (side == 'Sell' and price < limit_price):
-                order.cancel()
-                time.sleep(1)
+                if order is not None:
+                    order.cancel()
+                    time.sleep(1)
                 break
 
             if order is None:
@@ -195,6 +196,7 @@ class User:
                     if first_order.cumQty > 0:
                         break
                     first_order = None
+                    time.sleep(1)
                     continue
 
                 if abs(self.diff_ticks(first_order.price)) > 10:
@@ -257,9 +259,8 @@ class User:
             ally_price = first_order.price + (incremental_tick * self.tick_size * incremental_factor * ally_indicator)
             ally_qty = incremental_factor * qty
 
-
             # Restrict the number of open ally orders
-            if ally_qty not in open_qtys and (len(open_qtys) <= 3 or ally_qty < max(open_qtys)):
+            if ally_qty not in open_qtys and (len(open_qtys) <= 2 or ally_qty < max(past_qtys)):
 
                 if str(ally_price) not in ally_orders:
                     ally_orders[str(ally_price)] = []
