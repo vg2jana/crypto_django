@@ -257,10 +257,19 @@ class User:
             diff_ticks = abs(self.diff_ticks(first_order.price, base=ltp))
             incremental_factor = 1 + int(diff_ticks / incremental_tick)
             ally_price = first_order.price + (incremental_tick * self.tick_size * incremental_factor * ally_indicator)
-            ally_qty = incremental_factor * qty
+            ally_qty = incremental_factor + qty
 
             # Restrict the number of open ally orders
             if ally_qty not in open_qtys and (len(open_qtys) <= 2 or ally_qty < max(past_qtys)):
+
+                # If the number of open orders exceeds 2, cancel the higher quantity order
+                if len(open_qtys) >= 2:
+                    max_qty = max(open_qtys)
+                    for o in open_orders:
+                        if o['orderQty'] == max_qty:
+                            temp = Order(self)
+                            temp.orderID = o['orderID']
+                            temp.cancel()
 
                 if str(ally_price) not in ally_orders:
                     ally_orders[str(ally_price)] = []
