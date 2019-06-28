@@ -102,10 +102,6 @@ class BitMEXWebsocket:
         '''Get recent trades.'''
         return self.data['trade']
 
-    def clear_executions(self):
-        '''Clear all executions.'''
-        self.data['execution'].clear()
-
     #
     # End Public Methods
     #

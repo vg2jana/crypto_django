@@ -108,3 +108,12 @@ class MyWebSocket:
             }
 
         return retval
+
+    def clear_executions(self):
+        self.ws.data['execution'].clear()
+
+    def get_position(self, symbol):
+        for p in self.ws.data['position']:
+            if p['isOpen'] == True and p['symbol'] == symbol:
+                return p
+        return None

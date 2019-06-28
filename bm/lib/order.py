@@ -22,6 +22,7 @@ class Order:
         self.cumQty = None
         self.workingIndicator = None
         self.parent_order = user.parent_order
+        self.wait = True
 
     def get_status(self):
 
@@ -40,6 +41,8 @@ class Order:
         while True:
             self.get_status()
             if self.ordStatus in status:
+                break
+            if self.wait is False:
                 break
 
     def new(self, **kwargs):

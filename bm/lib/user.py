@@ -236,7 +236,6 @@ class User:
 
             break
 
-        ally_orders = {}
         past_qtys = []
         ally_side = first_order.side
 
@@ -247,9 +246,12 @@ class User:
             if cross_order.ordStatus in ('Filled', 'Canceled'):
                 break
 
+            if cross_order.orderQty > 700:
+                continue
+
             # Get open orders
             open_orders = self.ws.open_orders()
-            open_qtys = [o['orderQty'] for o in open_orders if o['side'] == ally_side]
+            open_qtys = [abs(o['orderQty']) for o in open_orders if o['side'] == ally_side]
 
             ltp = self.ws.ltp()
 
@@ -271,36 +273,30 @@ class User:
                             temp.orderID = o['orderID']
                             temp.cancel()
 
-                if str(ally_price) not in ally_orders:
-                    ally_orders[str(ally_price)] = []
-
-                if len(past_qtys) == 0 or ally_qty >= (max(past_qtys) / 2):
+                if past_qtys.count(ally_qty) <= 2 and (len(past_qtys) == 0 or ally_qty >= (max(past_qtys) / 2)):
                     order = Order(self)
                     status = order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
                                         price=ally_price, execInst="ParticipateDoNotInitiate")
 
-                    if status is not None:
-                        ally_orders[str(ally_price)].append(order)
-                        if order.ordStatus == 'Canceled':
-                            time.sleep(1)
+                    if status is not None and order.ordStatus == 'Canceled':
+                        time.sleep(1)
 
-            total_cum_qty = first_order.cumQty
-            total_price = first_order.price * first_order.cumQty
-            for price, orders in ally_orders.items():
-                for o in orders:
-                    o.get_status()
-                    if o.cumQty > 0:
-                        total_cum_qty += o.cumQty
-                        total_price += float(price) * o.cumQty
-                        if o.orderQty not in past_qtys:
-                            past_qtys.append(o.orderQty)
+                    past_qtys.clear()
+                    for e in self.ws.ws.data['execution']:
+                        if e['side'] == ally_side and e.get('ordStatus', None) in ('Filled', 'PartiallyFilled'):
+                            past_qtys.append(e['orderQty'])
 
-            if total_cum_qty != cross_order.orderQty:
-                average_price = total_price / total_cum_qty + (incremental_tick * self.tick_size * cross_indicator)
+
+            # Get open position and amend cross order if necessary
+            position = self.ws.get_position(self.symbol)
+            if position is not None and position.get('isOpen', False) is True:
+                total_cum_qty = abs(position['currentQty'])
+                average_price = position['avgEntryPrice'] + (incremental_tick * self.tick_size * cross_indicator)
                 average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
 
-                # Amend the cross order
-                cross_order.amend(orderID=cross_order.orderID, orderQty=total_cum_qty, price=average_price)
+                if total_cum_qty != cross_order.orderQty:
+                    # Amend the cross order
+                    cross_order.amend(orderID=cross_order.orderID, orderQty=total_cum_qty, price=average_price)
 
         # Cancel all orders
         self.client.cancel_all()
