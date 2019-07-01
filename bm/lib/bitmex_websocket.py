@@ -123,11 +123,11 @@ class BitMEXWebsocket:
         self.logger.debug("Started thread")
 
         # Wait for connect before continuing
-        conn_timeout = 5
-        while not self.ws.sock or not self.ws.sock.connected and conn_timeout:
+        conn_timeout = 20
+        while not self.ws.sock or not self.ws.sock.connected and conn_timeout > 0:
             sleep(1)
             conn_timeout -= 1
-        if not conn_timeout:
+        if conn_timeout <= 0:
             self.logger.error("Couldn't connect to WS! Exiting.")
             self.exit()
             raise websocket.WebSocketTimeoutException('Couldn\'t connect to WS! Exiting.')
@@ -155,7 +155,6 @@ class BitMEXWebsocket:
         '''
 
         # You can sub to orderBookL2 for all levels, or orderBook10 for top 10 levels & save bandwidth
-        # symbolSubs = ["execution", "instrument", "order", "orderBookL2", "position", "quote", "trade"]
         symbolSubs = ["execution", "instrument", "order", "orderBook10", "position", "quote", "trade"]
         genericSubs = ["margin"]
 

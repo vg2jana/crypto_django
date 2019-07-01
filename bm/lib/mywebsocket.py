@@ -112,8 +112,13 @@ class MyWebSocket:
     def clear_executions(self):
         self.ws.data['execution'].clear()
 
-    def get_position(self, symbol):
+    def get_position(self):
         for p in self.ws.data['position']:
-            if p['isOpen'] == True and p['symbol'] == symbol:
+            if p['isOpen'] is True and p['symbol'] == self.symbol:
                 return p
         return None
+
+    def restart(self):
+        self.ws.exit()
+        time.sleep(5)
+        self.connect_ws()

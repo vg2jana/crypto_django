@@ -50,8 +50,8 @@ class SampleCronJob(CronJobBase):
 
     def generate_open_order(self, user):
         open_order = None
-        position = user.client.open_position()
-        if position is not None and position.get('isOpen', False) is True:
+        position = user.ws.get_position()
+        if position is not None:
             open_order = Order(user)
             open_order.orderQty = position['currentQty']
             open_order.cumQty = abs(position['currentQty'])
@@ -80,6 +80,11 @@ class SampleCronJob(CronJobBase):
         count = 0
         incremental_tick = 20
         while count < 10:
+
+            # Cancel all open orders
+            user.client.cancel_all()
+            time.sleep(5)
+
             count += 1
             logging.info('Iteration starting: {}'.format(count))
             user.parent_order = ParentOrder.objects.create(uid=uuid.uuid1(), name='Incremental quantity')
@@ -98,11 +103,13 @@ class SampleCronJob(CronJobBase):
                 user.move_and_fill(side, open_order.cumQty, limit_price)
 
             open_order = self.generate_open_order(user)
-            user.worker_incremental_order(1, first_order=open_order, incremental_tick=incremental_tick)
+            user.worker_incremental_order(100, first_order=open_order, incremental_tick=incremental_tick)
 
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()
-            time.sleep(5)
 
             # Clear execution data
             user.ws.clear_executions()
+
+            # Restart websocket connection
+            user.ws.restart()
