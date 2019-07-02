@@ -79,7 +79,8 @@ class SampleCronJob(CronJobBase):
 
         count = 0
         incremental_tick = 20
-        while count < 10:
+        open_order = None
+        while count < 10 or open_order is not None:
 
             # Cancel all open orders
             user.client.cancel_all()
@@ -113,3 +114,6 @@ class SampleCronJob(CronJobBase):
 
             # Restart websocket connection
             user.ws.restart()
+
+            # Verify open order
+            open_order = self.generate_open_order(user)

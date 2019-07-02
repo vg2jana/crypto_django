@@ -140,13 +140,13 @@ class Opportunity:
     def buy_or_sell(self):
 
         while True:
-            past_12h_bucket = None
-            while past_12h_bucket is None:
-                past_12h = datetime.utcnow() - timedelta(hours=12)
-                past_12h_bucket = self.client.trade_bucket(binSize="1h", startTime=past_12h)
+            trade_bucket = None
+            while trade_bucket is None:
+                past_xh = datetime.utcnow() - timedelta(hours=48)
+                trade_bucket = self.client.trade_bucket(binSize="1h", startTime=past_xh)
 
             tide = []
-            for bucket in past_12h_bucket:
+            for bucket in trade_bucket:
                 tide.extend((bucket['high'], bucket['low']))
 
             low = min(tide)

@@ -124,7 +124,9 @@ class BitMEXWebsocket:
 
         # Wait for connect before continuing
         conn_timeout = 20
-        while not self.ws.sock or not self.ws.sock.connected and conn_timeout > 0:
+        while not self.ws.sock or not self.ws.sock.connected:
+            if conn_timeout <= 0:
+                break
             sleep(1)
             conn_timeout -= 1
         if conn_timeout <= 0:

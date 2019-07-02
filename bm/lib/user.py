@@ -219,7 +219,7 @@ class User:
         while True:
 
             cross_order = Order(self)
-            cross_price = first_order.price + (incremental_tick * self.tick_size * cross_indicator)
+            cross_price = first_order.price + (incremental_tick * cross_indicator)
 
             status = cross_order.new(orderQty=first_order.cumQty, ordType="Limit", side=cross_side, price=cross_price,
                                      execInst="ParticipateDoNotInitiate")
@@ -237,6 +237,7 @@ class User:
             break
 
         past_qtys = [-1,]
+        open_qtys = []
         ally_side = first_order.side
         ally_order_properties = []
 
@@ -299,22 +300,25 @@ class User:
                             past_qtys.append(ally_qty)
                             break
 
-                time.sleep(1)
-
             # Get open position and amend cross order if necessary
             position = self.ws.get_position()
             if position is not None:
+                unique_exec_qtys = list(past_qtys)
+                for q in open_qtys:
+                    if q in unique_exec_qtys and unique_exec_qtys.count(q) < 2:
+                        unique_exec_qtys.remove(q)
+                unique_exec_qtys = list(set(unique_exec_qtys))
+                increments = min(100, incremental_tick + max(qty, max(unique_exec_qtys)) - qty)
                 total_cum_qty = abs(position['currentQty'])
-                average_price = position['avgEntryPrice'] + (incremental_tick * self.tick_size * cross_indicator)
+                average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                 average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
 
-                if total_cum_qty != cross_order.orderQty:
+                if total_cum_qty != cross_order.orderQty or average_price != cross_order.price:
                     # Amend the cross order
                     cross_order.amend(orderID=cross_order.orderID, orderQty=total_cum_qty, price=average_price)
 
         # Cancel all orders
         self.client.cancel_all()
-
 
     def worker_close_depths(self, qty=1):
         while True:
