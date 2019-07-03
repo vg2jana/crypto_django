@@ -80,7 +80,7 @@ class SampleCronJob(CronJobBase):
         count = 0
         incremental_tick = 20
         open_order = None
-        while count < 10 or open_order is not None:
+        while count < 2 or open_order is not None:
 
             # Cancel all open orders
             user.client.cancel_all()
@@ -104,7 +104,7 @@ class SampleCronJob(CronJobBase):
                 user.move_and_fill(side, open_order.cumQty, limit_price)
 
             open_order = self.generate_open_order(user)
-            user.worker_incremental_order(100, first_order=open_order, incremental_tick=incremental_tick)
+            user.worker_incremental_order(5, first_order=open_order, incremental_tick=incremental_tick)
 
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()

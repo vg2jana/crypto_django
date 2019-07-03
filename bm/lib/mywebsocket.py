@@ -113,8 +113,9 @@ class MyWebSocket:
         self.ws.data['execution'].clear()
 
     def get_position(self):
+        self.try_ping()
         for p in self.ws.data['position']:
-            if p['isOpen'] is True and p['symbol'] == self.symbol:
+            if p['isOpen'] is True and p.get('avgEntryPrice', None) is not None and p['symbol'] == self.symbol:
                 return p
         return None
 

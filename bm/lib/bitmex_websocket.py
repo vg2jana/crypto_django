@@ -42,16 +42,23 @@ class BitMEXWebsocket:
         self.keys = {}
         self.exited = False
 
+        self.connect()
+
+    def connect(self):
+        self.data = {}
+        self.keys = {}
+        self.exited = False
+
         # We can subscribe right in the connection querystring, so let's build that.
         # Subscribe to all pertinent endpoints
         wsURL = self.__get_url()
         self.logger.info("Connecting to %s" % wsURL)
-        self.__connect(wsURL, symbol)
+        self.__connect(wsURL, self.symbol)
         self.logger.info('Connected to WS.')
 
         # Connected. Wait for partials
-        self.__wait_for_symbol(symbol)
-        if api_key:
+        self.__wait_for_symbol(self.symbol)
+        if self.api_key:
             self.__wait_for_account()
         self.logger.info('Got all market data. Starting.')
 
@@ -101,6 +108,11 @@ class BitMEXWebsocket:
     def recent_trades(self):
         '''Get recent trades.'''
         return self.data['trade']
+
+    def restart(self):
+        self.exit()
+        sleep(5)
+        self.connect()
 
     #
     # End Public Methods
@@ -244,10 +256,11 @@ class BitMEXWebsocket:
             self.logger.error(traceback.format_exc())
 
     def __on_error(self, ws, error):
-        '''Called on fatal websocket errors. We exit on these.'''
+        '''Called on fatal websocket errors. We restart on these.'''
         if not self.exited:
             self.logger.error("Error : %s" % error)
-            raise websocket.WebSocketException(error)
+            self.restart()
+            # raise websocket.WebSocketException(error)
 
     def __on_open(self, ws):
         '''Called when the WS opens.'''

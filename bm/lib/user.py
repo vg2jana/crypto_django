@@ -303,19 +303,29 @@ class User:
             # Get open position and amend cross order if necessary
             position = self.ws.get_position()
             if position is not None:
+                time.sleep(1)
+                # Get open orders
+                open_orders = self.ws.open_orders()
                 unique_exec_qtys = list(past_qtys)
-                for q in open_qtys:
+                for o in open_orders:
+                    if o['side'] != ally_side:
+                        continue
+                    q = abs(o['orderQty'])
                     if q in unique_exec_qtys and unique_exec_qtys.count(q) < 2:
                         unique_exec_qtys.remove(q)
-                unique_exec_qtys = list(set(unique_exec_qtys))
-                increments = min(100, incremental_tick + max(qty, max(unique_exec_qtys)) - qty)
-                total_cum_qty = abs(position['currentQty'])
-                average_price = position['avgEntryPrice'] + (increments * cross_indicator)
-                average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
 
-                if total_cum_qty != cross_order.orderQty or average_price != cross_order.price:
-                    # Amend the cross order
-                    cross_order.amend(orderID=cross_order.orderID, orderQty=total_cum_qty, price=average_price)
+                try:
+                    increments = min(100, incremental_tick + max(qty, max(unique_exec_qtys)) - qty)
+                    total_cum_qty = abs(position['currentQty'])
+                    average_price = position['avgEntryPrice'] + (increments * cross_indicator)
+                    average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
+
+                    if total_cum_qty != cross_order.orderQty or average_price != cross_order.price:
+                        # Amend the cross order
+                        cross_order.amend(orderID=cross_order.orderID, orderQty=total_cum_qty, price=average_price)
+                        time.sleep(0.5)
+                except Exception as e:
+                    self.logger.error(e)
 
         # Cancel all orders
         self.client.cancel_all()
