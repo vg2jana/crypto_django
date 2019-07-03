@@ -73,14 +73,19 @@ class SampleCronJob(CronJobBase):
                 data[k.strip()] = v.strip()
 
         symbol = data.get('symbol', 'XBTUSD')
-        endpoint = data.get('endpoint', "https://testnet.bitmex.com/api/v1")
 
-        user = User(data['key'], data['secret'], symbol, endpoint, dry_run=True)
+        dry_run = True
+        if dry_run is True:
+            endpoint = data.get('endpoint', "https://testnet.bitmex.com/api/v1")
+        else:
+            endpoint = data.get('endpoint', "https://www.bitmex.com/api/v1")
+
+        user = User(data['key'], data['secret'], symbol, endpoint, dry_run=dry_run)
 
         count = 0
         incremental_tick = 20
         open_order = None
-        while count < 2 or open_order is not None:
+        while count < 1 or open_order is not None:
 
             # Cancel all open orders
             user.client.cancel_all()
