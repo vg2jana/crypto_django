@@ -237,7 +237,6 @@ class User:
             break
 
         past_qtys = [-1,]
-        open_qtys = []
         ally_side = first_order.side
         ally_order_properties = []
 
@@ -255,7 +254,7 @@ class User:
             ally_price = first_order.price + increment
             if ally_price < 0 or ally_price > 30000:
                 break
-            ally_qty = min(qty + i, qty * 2)
+            ally_qty = min(qty + i, qty * 2) * 2
             ally_order_properties.append((ally_price, ally_qty))
 
         while True:
@@ -278,22 +277,9 @@ class User:
 
                 # Get open orders
                 open_orders = self.ws.open_orders()
-                open_qtys = [abs(o['orderQty']) for o in open_orders if o['side'] == ally_side]
 
                 # Restrict the number of open ally orders
-                if ally_qty not in open_qtys and past_qtys.count(ally_qty) < 2 and\
-                        (len(open_qtys) < 2 or ally_qty < max(past_qtys)):
-
-                    # If the number of open orders exceeds 2, cancel the higher quantity order
-                    if len(open_qtys) > 2:
-                        max_qty = max(open_qtys)
-                        for o in open_orders:
-                            if o['orderQty'] == max_qty:
-                                temp = Order(self)
-                                temp.orderID = o['orderID']
-                                temp.cancel()
-                                if max_qty in past_qtys:
-                                    past_qtys.remove(max_qty)
+                if ally_qty not in past_qtys and len(open_orders) < 3:
 
                     order = Order(self)
                     status = order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
@@ -311,19 +297,8 @@ class User:
             # Get open position and amend cross order if necessary
             position = self.ws.get_position()
             if position is not None:
-                time.sleep(1)
-                # Get open orders
-                open_orders = self.ws.open_orders()
-                unique_exec_qtys = list(past_qtys)
-                for o in open_orders:
-                    if o['side'] != ally_side:
-                        continue
-                    q = abs(o['orderQty'])
-                    if q in unique_exec_qtys and unique_exec_qtys.count(q) < 2:
-                        unique_exec_qtys.remove(q)
-
                 try:
-                    increments = min(100, (incremental_tick + max(qty, max(unique_exec_qtys)) - qty) * self.tick_size)
+                    increments = min(100, (incremental_tick + max(qty, max(past_qtys)) - qty) * self.tick_size)
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
