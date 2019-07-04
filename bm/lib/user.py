@@ -242,15 +242,21 @@ class User:
         ally_order_properties = []
 
         counter = 1
-        factor = 0
-        for i in range(1000):
-            counter += factor
-            ally_price = first_order.price + (incremental_tick * self.tick_size * counter * ally_indicator)
+        factor = []
+        while True:
+            factor.extend([counter] * counter)
+            if len(factor) > 100:
+                break
+            counter += 1
+
+        increment = 0
+        for i in factor:
+            increment += incremental_tick * i * self.tick_size * ally_indicator
+            ally_price = first_order.price + increment
             if ally_price < 0 or ally_price > 30000:
                 break
-            ally_qty = qty + counter
+            ally_qty = min(qty + i, qty * 2)
             ally_order_properties.append((ally_price, ally_qty))
-            factor += 1
 
         while True:
 
@@ -259,7 +265,7 @@ class User:
             if cross_order.ordStatus in ('Filled', 'Canceled'):
                 break
 
-            if cross_order.orderQty > 400:
+            if cross_order.orderQty > 600:
                 continue
 
             # Choose the order that needs to be placed
@@ -327,7 +333,7 @@ class User:
                         cross_order.amend(orderID=cross_order.orderID, orderQty=total_cum_qty, price=average_price)
                         time.sleep(0.5)
                 except Exception as e:
-                    self.logger.error(e)
+                    self.logger.warning(e)
 
         # Cancel all orders
         self.client.cancel_all()
