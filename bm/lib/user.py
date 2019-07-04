@@ -219,7 +219,7 @@ class User:
         while True:
 
             cross_order = Order(self)
-            cross_price = first_order.price + (incremental_tick * cross_indicator)
+            cross_price = first_order.price + (incremental_tick * self.tick_size * cross_indicator)
 
             status = cross_order.new(orderQty=first_order.cumQty, ordType="Limit", side=cross_side, price=cross_price,
                                      execInst="ParticipateDoNotInitiate")
@@ -317,7 +317,7 @@ class User:
                         unique_exec_qtys.remove(q)
 
                 try:
-                    increments = min(100, incremental_tick + max(qty, max(unique_exec_qtys)) - qty)
+                    increments = min(100, (incremental_tick + max(qty, max(unique_exec_qtys)) - qty) * self.tick_size)
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
