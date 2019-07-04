@@ -293,7 +293,9 @@ class User:
                     status = order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
                                         price=ally_price, execInst="ParticipateDoNotInitiate")
 
-                    if status is not None:
+                    if status is None:
+                        break
+                    else:
                         if order.ordStatus == 'Canceled':
                             time.sleep(1)
                         else:
