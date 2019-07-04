@@ -259,7 +259,7 @@ class User:
             if cross_order.ordStatus in ('Filled', 'Canceled'):
                 break
 
-            if cross_order.orderQty > 700:
+            if cross_order.orderQty > 400:
                 continue
 
             # Choose the order that needs to be placed

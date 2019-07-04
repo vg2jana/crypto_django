@@ -35,6 +35,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to place order with params: {}".format(kwargs))
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to place order with params: {}".format(kwargs))
@@ -53,6 +54,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to amend order with params: {}".format(kwargs))
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to amend order with params: {}".format(kwargs))
@@ -71,6 +73,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to cancel order with params: {}".format(kwargs))
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to cancel order with params: {}".format(kwargs))
@@ -92,6 +95,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to cancel all orders")
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to cancel all orders")
@@ -109,6 +113,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to get order with params: {}".format(kwargs))
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to get order with params: {}".format(kwargs))
@@ -130,6 +135,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to fetch open orders")
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to fetch open orders")
@@ -147,6 +153,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to get funding rate")
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to get order with params")
@@ -169,6 +176,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to get trade bucket with params: {}".format(kwargs))
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to get trade bucket with params: {}".format(kwargs))
@@ -187,6 +195,7 @@ class RestClient:
         except Exception as e:
             self.logger.warning(e)
             self.logger.warning("Failed to fetch open position")
+            time.sleep(2)
         else:
             if response.status_code != 200:
                 self.logger.warning("Failed to fetch open position")
