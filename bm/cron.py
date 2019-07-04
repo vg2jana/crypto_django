@@ -1,6 +1,8 @@
 import uuid
 import logging
 import time
+import sys
+import os
 from bm.lib.user import User
 from bm.lib.order import Order
 
@@ -122,3 +124,14 @@ class SampleCronJob(CronJobBase):
 
             # Verify open order
             open_order = self.generate_open_order(user)
+
+            if open_order is None:
+                try:
+                    with open('sign.txt', 'r') as f:
+                        x = f.read()
+                        if 'STOP' in x:
+                            logging.info('STOPPING on signal')
+                            os.remove('sign.txt')
+                            sys.exit(0)
+                except Exception as e:
+                    pass
