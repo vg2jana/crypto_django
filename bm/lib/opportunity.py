@@ -163,7 +163,19 @@ class Opportunity:
 
             funding_rate = self.client.funding_rate()
             if funding_rate is not None:
-                if funding_rate['fundingRate'] >= 0:
-                    return 'Buy'
+                timestamp = funding_rate['timestamp']
+                time_diff = datetime.utcnow() - timestamp.replace(tzinfo=None)
+
+                if time_diff.total_seconds() > (7 * 3600):
+
+                    if funding_rate['fundingRate'] >= 0:
+                        return 'Buy'
+                    else:
+                        return 'Sell'
+
                 else:
-                    return 'Sell'
+
+                    if ltp > mean:
+                        return 'Sell'
+                    else:
+                        return 'Buy'

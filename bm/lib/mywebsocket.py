@@ -80,7 +80,7 @@ class MyWebSocket:
 
         while ltp is None:
             ticker = self.ticker()
-            if ticker is not None:
+            if ticker is not None and abs(ticker['last'] - ticker['mark']) < 500:
                 ltp = ticker['last']
 
         return ltp

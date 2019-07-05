@@ -236,7 +236,8 @@ class User:
 
             break
 
-        past_qtys = [-1,]
+        past_qtys = []
+        past_prices = [-1,]
         ally_side = first_order.side
         ally_order_properties = []
 
@@ -257,6 +258,8 @@ class User:
             ally_qty = min(qty + i, qty * 2) * 2
             ally_order_properties.append((ally_price, ally_qty))
 
+        ally_prices, ally_qtys = zip(*ally_order_properties)
+
         while True:
 
             # Get status of cross order and break if it is fully filled
@@ -270,35 +273,64 @@ class User:
             # Choose the order that needs to be placed
             for ally_price, ally_qty in ally_order_properties:
 
+                index = ally_prices.index(ally_price)
                 ltp = self.ws.ltp()
                 if (ally_side == 'Buy' and ltp < ally_price) or\
                     (ally_side == 'Sell' and ltp > ally_price):
                     continue
 
                 # Get open orders
+                open_prices = [-1,]
+                open_index = [-1,]
                 open_orders = self.ws.open_orders()
+                for o in open_orders:
+                    if o['side'] == ally_side:
+                        open_prices.append(o['price'])
+                        open_index.append(ally_prices.index(o['price']))
 
                 # Restrict the number of open ally orders
-                if ally_qty not in past_qtys and len(open_orders) < 3:
+                if ally_price not in past_prices and ally_price not in open_prices:
 
-                    order = Order(self)
-                    status = order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
-                                        price=ally_price, execInst="ParticipateDoNotInitiate")
+                    # If the number of open orders exceeds 2
+                    if len(open_orders) > 2:
+                        # Break the iteration if the current index is higher than open indexes
+                        if index >= max(open_index):
+                            break
 
-                    if status is None:
+                        # Cancel the higher index
+                        max_price = ally_prices[max(open_index)]
+                        for o in open_orders:
+                            if o['price'] == max_price:
+                                temp = Order(self)
+                                temp.orderID = o['orderID']
+                                temp.cancel()
+                                time.sleep(1)
+                                if max_price in past_prices:
+                                    past_prices.remove(max_price)
+                                    past_qtys.remove(o['orderQty'])
+                                break
+
                         break
                     else:
-                        if order.ordStatus == 'Canceled':
-                            time.sleep(1)
-                        else:
-                            past_qtys.append(ally_qty)
+                        order = Order(self)
+                        status = order.new(orderQty=ally_qty, ordType="Limit", side=ally_side,
+                                            price=ally_price, execInst="ParticipateDoNotInitiate")
+
+                        if status is None:
                             break
+                        else:
+                            if order.ordStatus == 'Canceled':
+                                time.sleep(1)
+                            else:
+                                past_prices.append(ally_price)
+                                past_qtys.append(ally_qty)
+                                break
 
             # Get open position and amend cross order if necessary
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    increments = min(100, (incremental_tick + max(qty, max(past_qtys)) - qty) * self.tick_size)
+                    increments = min(100, (incremental_tick + (min(past_qtys) / 2) - qty) * self.tick_size)
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
