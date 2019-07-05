@@ -244,7 +244,7 @@ class User:
         counter = 1
         factor = []
         while True:
-            factor.extend([counter] * counter)
+            factor.extend([counter] * (counter * counter))
             if len(factor) > 100:
                 break
             counter += 1
@@ -253,7 +253,7 @@ class User:
         for i in factor:
             increment += incremental_tick * i * self.tick_size * ally_indicator
             ally_price = first_order.price + increment
-            if ally_price < 0 or ally_price > 30000:
+            if ally_price < 0 or ally_price > 17000:
                 break
             ally_qty = min(qty + i, qty * 2) * 2
             ally_order_properties.append((ally_price, ally_qty))
@@ -267,7 +267,7 @@ class User:
             if cross_order.ordStatus in ('Filled', 'Canceled'):
                 break
 
-            if cross_order.orderQty > 600:
+            if cross_order.orderQty > 700:
                 continue
 
             # Choose the order that needs to be placed
@@ -330,7 +330,7 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    increments = min(100, (incremental_tick + (min(past_qtys) / 2) - qty) * self.tick_size)
+                    increments = min(200 * self.tick_size, (incremental_tick + (max(past_qtys) / 2)) * self.tick_size)
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
