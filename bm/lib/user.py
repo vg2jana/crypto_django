@@ -330,7 +330,7 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    increments = min(200 * self.tick_size, (incremental_tick + (max(past_qtys) / 2)) * self.tick_size)
+                    increments = incremental_tick  * self.tick_size
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
