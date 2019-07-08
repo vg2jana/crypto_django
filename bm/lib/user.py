@@ -127,6 +127,7 @@ class User:
     def move_and_fill(self, side, qty, limit_price):
 
         order = None
+        cumQty = 0
         while True:
             bid_ask = self.ws.bid_ask()
             if side == 'Buy':
@@ -156,12 +157,16 @@ class User:
 
             elif order.ordStatus == 'Canceled':
                 qty -= order.cumQty
+                cumQty += order.cumQty
                 order = None
                 continue
 
             if abs(self.diff_ticks(order.price)) > 10:
                 order.cancel()
                 time.sleep(1)
+
+        if order is not None:
+            order.cumQty += cumQty
 
         return order
 
@@ -237,7 +242,7 @@ class User:
             break
 
         past_qtys = []
-        past_prices = [-1,]
+        past_prices = [-1, ]
         ally_side = first_order.side
         ally_order_properties = []
 
@@ -259,6 +264,37 @@ class User:
             ally_order_properties.append((ally_price, ally_qty))
 
         ally_prices, ally_qtys = zip(*ally_order_properties)
+
+        # Move and fill initially
+        limit_qty = qty * 10
+        limit_price = first_order.price + (incremental_tick * self.tick_size * ally_indicator)
+        while limit_qty > 0:
+
+            # Get status of cross order and break if it is fully filled
+            cross_order.get_status()
+            if cross_order.ordStatus in ('Filled', 'Canceled'):
+                break
+
+            order = self.move_and_fill(ally_side, qty, limit_price)
+            if order is not None and order.cumQty > 0:
+                limit_price = order.price
+                limit_qty -= order.cumQty
+
+            # Get open position and amend cross order if necessary
+            position = self.ws.get_position()
+            if position is not None:
+                try:
+                    increments = incremental_tick * self.tick_size
+                    total_cum_qty = abs(position['currentQty'])
+                    average_price = position['avgEntryPrice'] + (increments * cross_indicator)
+                    average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
+
+                    if total_cum_qty != cross_order.orderQty or average_price != cross_order.price:
+                        # Amend the cross order
+                        cross_order.amend(orderID=cross_order.orderID, orderQty=total_cum_qty, price=average_price)
+                        time.sleep(0.5)
+                except Exception as e:
+                    self.logger.warning(e)
 
         while True:
 
