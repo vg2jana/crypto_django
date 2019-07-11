@@ -111,7 +111,7 @@ class SampleCronJob(CronJobBase):
                 user.move_and_fill(side, open_order.cumQty, limit_price)
 
             open_order = self.generate_open_order(user)
-            user.worker_incremental_order(10, first_order=open_order, incremental_tick=incremental_tick)
+            user.worker_incremental_order(5, first_order=open_order, incremental_tick=incremental_tick)
 
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()

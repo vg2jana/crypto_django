@@ -321,8 +321,8 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    if cross_order.orderQty <= 600:
-                        increments = 20 * self.tick_size
+                    if cross_order.orderQty <= 500:
+                        increments = 30 * self.tick_size
                     else:
                         increments = 200 * self.tick_size
                     total_cum_qty = abs(position['currentQty'])

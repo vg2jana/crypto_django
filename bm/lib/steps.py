@@ -33,20 +33,20 @@ def initial_plus1_later_200(qty, start_price, indicator):
     start_price = start_price
     incremental_tick = 20
     while True:
-        if total_qty < 600:
+        if total_qty < 500:
             incremental_tick += 2
             qty += 1
         else:
             incremental_tick = 600
-            qty = 200
+            qty = 150
         increment += incremental_tick * 0.5
         ally_price = start_price + (increment * indicator)
-        if total_qty + int(qty) > 2600:
+        if total_qty + int(qty) > 1500:
             break
         ally_qty = int(qty)
         total_qty += ally_qty
         total_price += ally_price * ally_qty
-        result.append((ally_price, ally_qty))
+        result.append((ally_price, ally_qty, total_price / total_qty))
 
     return result
 
@@ -95,4 +95,4 @@ def fun_2():
 
 
 if __name__ == '__main__':
-    pass
+    initial_plus1_later_200(5, 11401, 1)
