@@ -46,7 +46,7 @@ def initial_plus1_later_200(qty, start_price, indicator):
         ally_qty = int(qty)
         total_qty += ally_qty
         total_price += ally_price * ally_qty
-        result.append((ally_price, ally_qty, total_price / total_qty))
+        result.append((ally_price, ally_qty))
 
     return result
 
