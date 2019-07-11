@@ -250,7 +250,7 @@ class User:
                 break
             counter += 1
 
-        ally_order_properties = initial_plus1_later_200(10, first_order.price)
+        ally_order_properties = initial_plus1_later_200(first_order.cumQty, first_order.price, ally_indicator)
 
         ally_prices, ally_qtys = zip(*ally_order_properties)
 
@@ -321,21 +321,10 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    # Get open orders
-                    open_prices = [-1, ]
-                    open_orders = self.ws.open_orders()
-                    for o in open_orders:
-                        if o['side'] == ally_side:
-                            open_prices.append(o['price'])
-
-                    filled_prices = [p for p in past_prices if p not in open_prices]
-                    max_index = 0
-                    if len(filled_prices) > 0:
-                        if ally_side == 'Buy':
-                            max_index = ally_prices.index(min(filled_prices))
-                        else:
-                            max_index = ally_prices.index(max(filled_prices))
-                    increments = (incremental_tick + max_index) * self.tick_size
+                    if cross_order.orderQty <= 600:
+                        increments = 20 * self.tick_size
+                    else:
+                        increments = 200 * self.tick_size
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)

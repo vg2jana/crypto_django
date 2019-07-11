@@ -23,7 +23,7 @@ def f13800_12800():
     return result
 
 
-def initial_plus1_later_200(qty, start_price):
+def initial_plus1_later_200(qty, start_price, indicator):
     # Ideal quantity value is 10
     increment = 0
     result = []
@@ -40,7 +40,7 @@ def initial_plus1_later_200(qty, start_price):
             incremental_tick = 600
             qty = 200
         increment += incremental_tick * 0.5
-        ally_price = start_price + increment
+        ally_price = start_price + (increment * indicator)
         if total_qty + int(qty) > 2600:
             break
         ally_qty = int(qty)
@@ -92,3 +92,7 @@ def fun_2():
         incremental_tick += 5
 
     return result
+
+
+if __name__ == '__main__':
+    pass
