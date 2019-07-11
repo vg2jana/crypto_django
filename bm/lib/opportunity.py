@@ -142,7 +142,7 @@ class Opportunity:
         while True:
             trade_bucket = None
             while trade_bucket is None:
-                past_xh = datetime.utcnow() - timedelta(hours=48)
+                past_xh = datetime.utcnow() - timedelta(hours=100)
                 trade_bucket = self.client.trade_bucket(binSize="1h", startTime=past_xh)
 
             tide = []

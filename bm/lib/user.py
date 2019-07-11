@@ -8,6 +8,7 @@ from bm.lib.mywebsocket import MyWebSocket
 from bm.lib.opportunity import Opportunity
 from bm.lib.rest import RestClient
 from bm.lib.order import Order
+from bm.lib.steps import *
 
 
 class User:
@@ -249,14 +250,7 @@ class User:
                 break
             counter += 1
 
-        increment = 0
-        for i in factor:
-            increment += incremental_tick * i * self.tick_size * ally_indicator
-            ally_price = first_order.price + increment
-            if ally_price < 0 or ally_price > 17000:
-                break
-            ally_qty = min(qty + i, qty * 2) * 2
-            ally_order_properties.append((ally_price, ally_qty))
+        ally_order_properties = initial_plus1_later_200(10, first_order.price)
 
         ally_prices, ally_qtys = zip(*ally_order_properties)
 
@@ -266,9 +260,6 @@ class User:
             cross_order.get_status()
             if cross_order.ordStatus in ('Filled', 'Canceled'):
                 break
-
-            if cross_order.orderQty > 700:
-                continue
 
             # Choose the order that needs to be placed
             for ally_price, ally_qty in ally_order_properties:
@@ -330,7 +321,21 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    increments = incremental_tick  * self.tick_size
+                    # Get open orders
+                    open_prices = [-1, ]
+                    open_orders = self.ws.open_orders()
+                    for o in open_orders:
+                        if o['side'] == ally_side:
+                            open_prices.append(o['price'])
+
+                    filled_prices = [p for p in past_prices if p not in open_prices]
+                    max_index = 0
+                    if len(filled_prices) > 0:
+                        if ally_side == 'Buy':
+                            max_index = ally_prices.index(min(filled_prices))
+                        else:
+                            max_index = ally_prices.index(max(filled_prices))
+                    increments = (incremental_tick + max_index) * self.tick_size
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
