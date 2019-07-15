@@ -324,7 +324,7 @@ class User:
                     if cross_order.orderQty <= 500:
                         increments = 30 * self.tick_size
                     else:
-                        increments = 200 * self.tick_size
+                        increments = 300 * self.tick_size
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)

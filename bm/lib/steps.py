@@ -1,3 +1,5 @@
+import json
+
 def f13800_12800():
     increment = 0
     result = []
@@ -34,7 +36,7 @@ def initial_plus1_later_200(qty, start_price, indicator):
     incremental_tick = 20
     while True:
         if total_qty < 500:
-            incremental_tick += 2
+            incremental_tick += 3
             qty += 1
         else:
             incremental_tick = 600
@@ -95,4 +97,6 @@ def fun_2():
 
 
 if __name__ == '__main__':
-    initial_plus1_later_200(5, 11401, 1)
+    r = initial_plus1_later_200(10, 11000, 1)
+    with open('1.txt', 'w') as f:
+        f.write(json.dumps(r, indent=4))
