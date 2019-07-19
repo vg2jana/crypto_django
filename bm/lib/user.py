@@ -250,7 +250,7 @@ class User:
                 break
             counter += 1
 
-        ally_order_properties = initial_plus1_later_200(first_order.cumQty, first_order.price, ally_indicator)
+        ally_order_properties = marathon(first_order.orderQty, first_order.price, ally_indicator)
 
         ally_prices, ally_qtys = zip(*ally_order_properties)
 
@@ -322,9 +322,9 @@ class User:
             if position is not None:
                 try:
                     if cross_order.orderQty <= 500:
-                        increments = 30 * self.tick_size
+                        increments = 60 * self.tick_size
                     else:
-                        increments = 300 * self.tick_size
+                        increments = 500 * self.tick_size
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
