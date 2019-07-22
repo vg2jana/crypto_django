@@ -31,15 +31,16 @@ def marathon(qty, start_price, indicator):
     total_qty = 0
     total_price = 0
     start_price = start_price
+    initial_qty = qty
     while True:
-        if total_qty < 500:
+        if total_qty < 600:
             incremental_tick = 50
         else:
             incremental_tick = 600
-            qty = max(100, qty * 1.2)
+            qty = max(initial_qty * 4, qty * 1.2)
         increment += incremental_tick * 0.5
         ally_price = start_price + (increment * indicator)
-        if total_qty + int(qty) > 1500:
+        if total_qty + int(qty) > 1800:
             break
         ally_qty = int(qty)
         total_qty += ally_qty
@@ -152,10 +153,6 @@ def factor_ever_step(qty, start_price, indicator):
 
 
 if __name__ == '__main__':
-    r = initial_plus1_later_200(10, 11000, 1)
-    with open('1.txt', 'w') as f:
-        f.write(json.dumps(r, indent=4))
-
-    r = marathon(25, 11000, 1)
+    r = marathon(30, 11000, 1)
     with open('2.txt', 'w') as f:
         f.write(json.dumps(r, indent=4))

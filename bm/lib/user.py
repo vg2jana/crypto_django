@@ -322,7 +322,7 @@ class User:
             if position is not None:
                 try:
                     if cross_order.orderQty <= 500:
-                        increments = 60 * self.tick_size
+                        increments = 30 * self.tick_size
                     else:
                         increments = 500 * self.tick_size
                     total_cum_qty = abs(position['currentQty'])
