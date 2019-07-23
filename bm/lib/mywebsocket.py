@@ -1,6 +1,7 @@
 import time
 import websocket
 import logging
+from datetime import datetime
 from bm.lib.bitmex_websocket import BitMEXWebsocket
 
 
@@ -13,6 +14,8 @@ class MyWebSocket:
         self.key = key
         self.secret = secret
         self.logger = logging.getLogger()
+        self.last_ltp = None
+        self.last_ltp_timestamp = None
 
         if ws is not None:
             self.ws = ws
@@ -82,6 +85,16 @@ class MyWebSocket:
             ticker = self.ticker()
             if ticker is not None and abs(ticker['last'] - ticker['mark']) < 500:
                 ltp = ticker['last']
+
+        # Restart websocket if ltp not updated for few minutes
+        if ltp != self.last_ltp:
+            self.last_ltp = ltp
+            self.last_ltp_timestamp = datetime.now()
+        elif self.last_ltp_timestamp is not None:
+            time_diff = datetime.utcnow() - self.last_ltp_timestamp
+            if time_diff.total_seconds() > 180:
+                self.logger.warning('LTP not updated for a long time')
+                self.restart()
 
         return ltp
 
