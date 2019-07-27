@@ -154,5 +154,9 @@ def factor_ever_step(qty, start_price, indicator):
 
 if __name__ == '__main__':
     r = marathon(30, 11000, 1)
+    with open('1.txt', 'w') as f:
+        f.write(json.dumps(r, indent=4))
+
+    r = marathon(40, 11000, 1)
     with open('2.txt', 'w') as f:
         f.write(json.dumps(r, indent=4))
