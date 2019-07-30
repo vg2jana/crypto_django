@@ -206,3 +206,32 @@ class RestClient:
             position = position[0]
 
         return position
+
+    def bid_ask_0(self):
+
+        book = None
+
+        try:
+            book, response = self.api.OrderBook.OrderBook_getL2(symbol=self.symbol, depth=1).result()
+        except Exception as e:
+            self.logger.warning(e)
+            self.logger.warning("Failed to order book L2")
+            time.sleep(2)
+        else:
+            if response.status_code != 200:
+                self.logger.warning("Failed to fetch order book L2")
+                self.logger.warning("Status code: {}, Reason: {}".format(response.status_code, response.reason))
+                book = None
+
+        if book is None:
+            return None
+
+        ask = 9999999
+        bid = 1
+        for d in book:
+            if d['side'] == 'Sell':
+                ask = d['price']
+            else:
+                bid = d['price']
+
+        return {'bid': bid, 'ask': ask}

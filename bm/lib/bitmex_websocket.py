@@ -8,7 +8,6 @@ import urllib
 import math
 from bm.lib.api_key import generate_nonce, generate_signature
 
-
 # Naive implementation of connecting to BitMEX websocket for streaming realtime data.
 # The Marketmaker still interacts with this as if it were a REST Endpoint, but now it can get
 # much more realtime data without polling the hell out of the API.
@@ -76,14 +75,10 @@ class BitMEXWebsocket:
 
     def get_ticker(self):
         '''Return a ticker object. Generated from quote and trade.'''
-        lastQuote = self.data['quote'][-1]
         lastTrade = self.data['trade'][-1]
         instrument = self.data['instrument'][0]
         ticker = {
             "last": lastTrade['price'],
-            "buy": lastQuote['bidPrice'],
-            "sell": lastQuote['askPrice'],
-            "mid": (float(lastQuote['bidPrice'] or 0) + float(lastQuote['askPrice'] or 0)) / 2,
             "mark": instrument['markPrice']
         }
 
@@ -170,7 +165,7 @@ class BitMEXWebsocket:
         '''
 
         # You can sub to orderBookL2 for all levels, or orderBook10 for top 10 levels & save bandwidth
-        symbolSubs = ["execution", "instrument", "order", "orderBook10", "position", "quote", "trade"]
+        symbolSubs = ["execution", "instrument", "order", "position", "trade"]
         genericSubs = ["margin"]
 
         subscriptions = [sub + ':' + self.symbol for sub in symbolSubs]
@@ -184,13 +179,12 @@ class BitMEXWebsocket:
     def __wait_for_account(self):
         '''On subscribe, this data will come down. Wait for it.'''
         # Wait for the keys to show up from the ws
-        # while not {'margin', 'position', 'order', 'orderBookL2'} <= set(self.data):
-        while not {'margin', 'position', 'order', 'orderBook10'} <= set(self.data):
+        while not {'margin', 'position', 'order'} <= set(self.data):
             sleep(0.1)
 
     def __wait_for_symbol(self, symbol):
         '''On subscribe, this data will come down. Wait for it.'''
-        while not {'instrument', 'trade', 'quote'} <= set(self.data):
+        while not {'instrument', 'trade'} <= set(self.data):
             sleep(0.1)
 
     def __send_command(self, command, args=None):

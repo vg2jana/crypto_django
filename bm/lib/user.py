@@ -129,11 +129,11 @@ class User:
 
         order = None
         while True:
-            bid_ask = self.ws.bid_ask()
+            bid_ask = self.client.bid_ask_0()
             if side == 'Buy':
-                price = bid_ask['bid']['price'][0]
+                price = bid_ask['bid']
             else:
-                price = bid_ask['ask']['price'][0]
+                price = bid_ask['ask']
 
             if (side == 'Buy' and price > limit_price) or (side == 'Sell' and price < limit_price):
                 if order is not None:
@@ -173,19 +173,24 @@ class User:
 
                 if first_order is None:
                     side = self.opportunity.buy_or_sell()
-                    bid_ask = self.ws.bid_ask()
+                    bid_ask = self.client.bid_ask_0()
+
+                    if bid_ask is None:
+                        time.sleep(1)
+                        continue
 
                     if side == 'Buy':
-                        price = bid_ask['bid']['price'][0]
+                        price = bid_ask['bid']
                     else:
-                        price = bid_ask['ask']['price'][0]
+                        price = bid_ask['ask']
 
                     first_order = Order(self)
-                    status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price,
-                                             execInst="ParticipateDoNotInitiate")
+                    status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price)
+                                             # execInst="ParticipateDoNotInitiate")
 
                     if status is None:
                         first_order = None
+                        time.sleep(1)
                         continue
 
                 first_order.get_status()
@@ -280,7 +285,11 @@ class User:
                         open_index.append(ally_prices.index(o['price']))
 
                 # Restrict the number of open ally orders
-                if past_prices.count(ally_price) < 2 and ally_price not in open_prices:
+                if cross_order.orderQty < (4 * qty):
+                    count = 1
+                else:
+                    count = 2
+                if past_prices.count(ally_price) < count and ally_price not in open_prices:
 
                     # If the number of open orders exceeds 2
                     if len(open_orders) > 2:
@@ -321,10 +330,7 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    if cross_order.orderQty < 300:
-                        increments = 30 * self.tick_size
-                    else:
-                        increments = int(cross_order.orderQty / 10)
+                    increments = max(15, int(cross_order.orderQty / 10))
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
