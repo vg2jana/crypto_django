@@ -250,7 +250,7 @@ class User:
                 break
             counter += 1
 
-        ally_order_properties = marathon(first_order.orderQty, first_order.price, ally_indicator)
+        ally_order_properties = marathon(qty, first_order.price, ally_indicator)
 
         ally_prices, ally_qtys = zip(*ally_order_properties)
 
@@ -280,7 +280,7 @@ class User:
                         open_index.append(ally_prices.index(o['price']))
 
                 # Restrict the number of open ally orders
-                if ally_price not in past_prices and ally_price not in open_prices:
+                if past_prices.count(ally_price) < 2 and ally_price not in open_prices:
 
                     # If the number of open orders exceeds 2
                     if len(open_orders) > 2:
@@ -288,7 +288,7 @@ class User:
                         if index >= max(open_index):
                             break
 
-                        # Cancel the higher index
+                        # Cancel the highest index
                         max_price = ally_prices[max(open_index)]
                         for o in open_orders:
                             if o['price'] == max_price:
@@ -321,12 +321,10 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    if cross_order.orderQty <= 300:
-                        increments = 20 * self.tick_size
-                    elif cross_order.orderQty <= 600:
-                        increments = 100 * self.tick_size
+                    if cross_order.orderQty < 300:
+                        increments = 30 * self.tick_size
                     else:
-                        increments = 200 * self.tick_size
+                        increments = int(cross_order.orderQty / 10)
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)

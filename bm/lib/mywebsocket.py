@@ -91,7 +91,7 @@ class MyWebSocket:
             self.last_ltp = ltp
             self.last_ltp_timestamp = datetime.now()
         elif self.last_ltp_timestamp is not None:
-            time_diff = datetime.utcnow() - self.last_ltp_timestamp
+            time_diff = datetime.now() - self.last_ltp_timestamp
             if time_diff.total_seconds() > 180:
                 self.logger.warning('LTP not updated for a long time')
                 self.restart()
