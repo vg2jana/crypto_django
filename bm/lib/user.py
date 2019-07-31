@@ -288,7 +288,7 @@ class User:
                 if cross_order.orderQty < (4 * qty):
                     count = 1
                 else:
-                    count = 2
+                    count = 1
                 if past_prices.count(ally_price) < count and ally_price not in open_prices:
 
                     # If the number of open orders exceeds 2
