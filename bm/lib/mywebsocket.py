@@ -87,14 +87,14 @@ class MyWebSocket:
                 ltp = ticker['last']
 
         # Restart websocket if ltp not updated for few minutes
-        if ltp != self.last_ltp:
-            self.last_ltp = ltp
-            self.last_ltp_timestamp = datetime.now()
-        elif self.last_ltp_timestamp is not None:
-            time_diff = datetime.now() - self.last_ltp_timestamp
-            if time_diff.total_seconds() > 180:
-                self.logger.warning('LTP not updated for a long time')
-                self.restart()
+        # if ltp != self.last_ltp:
+        #     self.last_ltp = ltp
+        #     self.last_ltp_timestamp = datetime.now()
+        # elif self.last_ltp_timestamp is not None:
+        #     time_diff = datetime.now() - self.last_ltp_timestamp
+        #     if time_diff.total_seconds() > 180:
+        #         self.logger.warning('LTP not updated for a long time')
+        #         self.restart()
 
         return ltp
 
