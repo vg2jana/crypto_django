@@ -330,7 +330,7 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    increments = max(15, int(cross_order.orderQty / 10))
+                    increments = int(cross_order.orderQty / 10)
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
