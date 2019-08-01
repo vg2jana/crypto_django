@@ -185,8 +185,8 @@ class User:
                         price = bid_ask['ask']
 
                     first_order = Order(self)
-                    status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price)
-                                             # execInst="ParticipateDoNotInitiate")
+                    status = first_order.new(orderQty=qty, ordType="Limit", side=side, price=price,
+                                             execInst="ParticipateDoNotInitiate")
 
                     if status is None:
                         first_order = None
