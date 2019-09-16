@@ -78,8 +78,6 @@ class SampleCronJob(CronJobBase):
                 data[k.strip()] = v.strip()
 
         symbol = data.get('symbol', 'XBTUSD')
-        ltp_range = data['side']
-        qty = int(data['qty'])
 
         dry_run = False
         if dry_run is True:
@@ -90,11 +88,11 @@ class SampleCronJob(CronJobBase):
         user = User(data['key'], data['secret'], symbol, endpoint, dry_run=dry_run)
 
         count = 0
-        incremental_tick = 50
         open_order = None
         while count < 1 or open_order is not None:
-
-            # Choose side
+            # Choose side and qty
+            ltp_range = data['side']
+            qty = int(data['qty'])
             side = user.opportunity.buy_sell_range(json.loads(ltp_range))
 
             # Cancel all open orders
@@ -115,11 +113,11 @@ class SampleCronJob(CronJobBase):
                 else:
                     cross_indicator = -1
                     side = 'Buy'
-                limit_price = open_order.price + (incremental_tick * user.tick_size * cross_indicator)
+                limit_price = open_order.price + (int(open_order.cumQty / 5) * cross_indicator)
                 user.move_and_fill(side, open_order.cumQty, limit_price)
 
             open_order = self.generate_open_order(user)
-            user.worker_incremental_order(qty, side, first_order=open_order, incremental_tick=incremental_tick)
+            user.worker_incremental_order(qty, side, first_order=open_order)
 
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()
