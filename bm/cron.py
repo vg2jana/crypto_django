@@ -3,6 +3,7 @@ import logging
 import time
 import sys
 import os
+import json
 from bm.lib.user import User
 from bm.lib.order import Order
 
@@ -68,6 +69,8 @@ class SampleCronJob(CronJobBase):
 
     def do(self):
 
+        logging.info("My PID: {}".format(os.getpid()))
+
         data = {}
         with open('keys.txt', 'r') as f:
             for line in f.readlines():
@@ -75,8 +78,10 @@ class SampleCronJob(CronJobBase):
                 data[k.strip()] = v.strip()
 
         symbol = data.get('symbol', 'XBTUSD')
+        ltp_range = data['side']
+        qty = int(data['qty'])
 
-        dry_run = True
+        dry_run = False
         if dry_run is True:
             endpoint = data.get('endpoint', "https://testnet.bitmex.com/api/v1")
         else:
@@ -88,6 +93,9 @@ class SampleCronJob(CronJobBase):
         incremental_tick = 50
         open_order = None
         while count < 1 or open_order is not None:
+
+            # Choose side
+            side = user.opportunity.buy_sell_range(json.loads(ltp_range))
 
             # Cancel all open orders
             user.client.cancel_all()
@@ -111,7 +119,7 @@ class SampleCronJob(CronJobBase):
                 user.move_and_fill(side, open_order.cumQty, limit_price)
 
             open_order = self.generate_open_order(user)
-            user.worker_incremental_order(25, first_order=open_order, incremental_tick=incremental_tick)
+            user.worker_incremental_order(qty, side, first_order=open_order, incremental_tick=incremental_tick)
 
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()

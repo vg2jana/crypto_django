@@ -215,7 +215,7 @@ class RestClient:
             book, response = self.api.OrderBook.OrderBook_getL2(symbol=self.symbol, depth=1).result()
         except Exception as e:
             self.logger.warning(e)
-            self.logger.warning("Failed to order book L2")
+            self.logger.warning("Failed to fetch order book L2")
             time.sleep(2)
         else:
             if response.status_code != 200:

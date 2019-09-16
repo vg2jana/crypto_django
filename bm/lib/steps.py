@@ -1,11 +1,11 @@
 import json
 
+
 def crawl_then_hop(qty, start_price, indicator):
     increment = 0
     result = []
     total_qty = 0
     total_price = 0
-    qty = qty
     start_price = start_price
     while True:
         ally_price = start_price + (increment * indicator)
@@ -43,6 +43,22 @@ def marathon(qty, start_price, indicator):
         if total_qty + int(qty) > 2500:
             break
         ally_qty = int(qty)
+        total_qty += ally_qty
+        total_price += ally_price * ally_qty
+        result.append((ally_price, ally_qty))
+
+    return result
+
+def fibonacci(qty, start_price, indicator):
+    increment = 0
+    result = []
+    total_qty = 0
+    total_price = 0
+    start_price = start_price
+    for inc, n in enumerate((1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)):
+        increment += n * 5
+        ally_price = start_price + (increment * indicator)
+        ally_qty = int(qty) # + inc + 1
         total_qty += ally_qty
         total_price += ally_price * ally_qty
         result.append((ally_price, ally_qty))
@@ -153,8 +169,8 @@ def factor_ever_step(qty, start_price, indicator):
 
 
 if __name__ == '__main__':
-    r = marathon(25, 11000, 1)
-    with open('2.txt', 'w') as f:
+    r = fibonacci(25, 11000, 1)
+    with open('1.txt', 'w') as f:
         f.write(json.dumps(r, indent=4))
 
     # r = marathon(40, 11000, 1)

@@ -130,6 +130,9 @@ class User:
         order = None
         while True:
             bid_ask = self.client.bid_ask_0()
+            if bid_ask is None:
+                continue
+
             if side == 'Buy':
                 price = bid_ask['bid']
             else:
@@ -166,7 +169,7 @@ class User:
 
         return order
 
-    def worker_incremental_order(self, qty, first_order=None, incremental_tick=20):
+    def worker_incremental_order(self, qty, side, first_order=None, incremental_tick=20):
 
         if first_order is None:
             while True:
@@ -255,7 +258,7 @@ class User:
                 break
             counter += 1
 
-        ally_order_properties = marathon(qty, first_order.price, ally_indicator)
+        ally_order_properties = fibonacci(qty, first_order.price, ally_indicator)
 
         ally_prices, ally_qtys = zip(*ally_order_properties)
 
@@ -285,11 +288,7 @@ class User:
                         open_index.append(ally_prices.index(o['price']))
 
                 # Restrict the number of open ally orders
-                if cross_order.orderQty < (4 * qty):
-                    count = 1
-                else:
-                    count = 1
-                if past_prices.count(ally_price) < count and ally_price not in open_prices:
+                if past_prices.count(ally_price) < 10 and ally_price not in open_prices:
 
                     # If the number of open orders exceeds 2
                     if len(open_orders) > 2:
@@ -330,7 +329,7 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    increments = int(cross_order.orderQty / 10)
+                    increments = max(15, int(cross_order.orderQty / 5))
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
@@ -339,6 +338,14 @@ class User:
                         # Amend the cross order
                         cross_order.amend(orderID=cross_order.orderID, orderQty=total_cum_qty, price=average_price)
                         time.sleep(0.5)
+
+                    if total_cum_qty >= 600 and len(ally_order_properties) > 2:
+                        # Cancel all orders
+                        self.client.cancel_all()
+                        time.sleep(10)
+
+                        # Update ally orders
+                        ally_order_properties = ((total_cum_qty, average_price + 500), (total_cum_qty, average_price + 1000))
                 except Exception as e:
                     self.logger.warning(e)
 

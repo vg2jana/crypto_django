@@ -179,3 +179,14 @@ class Opportunity:
                         return 'Sell'
                     else:
                         return 'Buy'
+
+    def buy_sell_range(self, data):
+
+        ltp = self.ws.ltp()
+
+        if ltp <= data['Buy']:
+            return "Buy"
+        elif ltp > data["Sell"]:
+            return "Sell"
+        else:
+            return None
