@@ -196,9 +196,10 @@ class BitMEXWebsocket:
     def __on_message(self, ws, message):
         '''Handler for parsing WS messages.'''
         message = json.loads(message)
-        self.logger.debug(json.dumps(message))
 
         table = message['table'] if 'table' in message else None
+        if table in ("position", "order"):
+            self.logger.info(message)
         action = message['action'] if 'action' in message else None
         try:
             if 'subscribe' in message:

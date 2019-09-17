@@ -175,7 +175,7 @@ class User:
             while True:
 
                 if first_order is None:
-                    side = self.opportunity.buy_or_sell()
+                    # side = self.opportunity.buy_or_sell()
                     bid_ask = self.client.bid_ask_0()
 
                     if bid_ask is None:
@@ -274,8 +274,8 @@ class User:
 
                 index = ally_prices.index(ally_price)
                 ltp = self.ws.ltp()
-                if (ally_side == 'Buy' and ltp < ally_price) or\
-                    (ally_side == 'Sell' and ltp > ally_price):
+                if (ally_side == 'Buy' and ltp - 1 < ally_price) or\
+                    (ally_side == 'Sell' and ltp + 1 > ally_price):
                     continue
 
                 # Get open orders
