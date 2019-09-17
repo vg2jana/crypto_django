@@ -49,7 +49,7 @@ def marathon(qty, start_price, indicator):
 
     return result
 
-def fibonacci(qty, start_price, indicator):
+def fibonacci(qty, start_price, indicator, step=1):
     increment = 0
     result = []
     total_qty = 0
@@ -58,7 +58,7 @@ def fibonacci(qty, start_price, indicator):
     for inc, n in enumerate((1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)):
         increment += n * 5
         ally_price = start_price + (increment * indicator)
-        ally_qty = int(qty) + inc + 1
+        ally_qty = int(qty) + inc + step
         total_qty += ally_qty
         total_price += ally_price * ally_qty
         result.append((ally_price, ally_qty))

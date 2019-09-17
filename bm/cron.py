@@ -93,6 +93,7 @@ class SampleCronJob(CronJobBase):
             # Choose side and qty
             ltp_range = data['side']
             qty = int(data['qty'])
+            step = int(data['step'])
             side = user.opportunity.buy_sell_range(json.loads(ltp_range))
 
             # Cancel all open orders
@@ -117,7 +118,7 @@ class SampleCronJob(CronJobBase):
                 user.move_and_fill(side, open_order.cumQty, limit_price)
 
             open_order = self.generate_open_order(user)
-            user.worker_incremental_order(qty, side, first_order=open_order)
+            user.worker_incremental_order(qty, side, first_order=open_order, step=step)
 
             logging.info('Iteration completed: {}'.format(count))
             # self.log_summary()

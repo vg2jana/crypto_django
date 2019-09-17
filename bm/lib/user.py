@@ -169,7 +169,7 @@ class User:
 
         return order
 
-    def worker_incremental_order(self, qty, side, first_order=None, incremental_tick=20):
+    def worker_incremental_order(self, qty, side, first_order=None, incremental_tick=20, step=1):
 
         if first_order is None:
             while True:
