@@ -287,8 +287,13 @@ class User:
                         open_prices.append(o['price'])
                         open_index.append(ally_prices.index(o['price']))
 
+                if ally_qty < 600:
+                    count = 10
+                else:
+                    count = 1
+
                 # Restrict the number of open ally orders
-                if past_prices.count(ally_price) < 10 and ally_price not in open_prices:
+                if past_prices.count(ally_price) < count and ally_price not in open_prices:
 
                     # If the number of open orders exceeds 2
                     if len(open_orders) > 2:
@@ -329,7 +334,8 @@ class User:
             position = self.ws.get_position()
             if position is not None:
                 try:
-                    increments = max(15, int(cross_order.orderQty / 5))
+                    # increments = max(15, int(cross_order.orderQty / 5))
+                    increments = 20
                     total_cum_qty = abs(position['currentQty'])
                     average_price = position['avgEntryPrice'] + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
