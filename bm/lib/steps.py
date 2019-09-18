@@ -55,13 +55,15 @@ def fibonacci(qty, start_price, indicator, step=1):
     total_qty = 0
     total_price = 0
     start_price = start_price
-    for inc, n in enumerate((1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)):
+    inc = 0
+    for n in (2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
         increment += n * 5
         ally_price = start_price + (increment * indicator)
-        ally_qty = int(qty) + inc + step
+        ally_qty = int(qty) + inc
         total_qty += ally_qty
         total_price += ally_price * ally_qty
         result.append((ally_price, ally_qty))
+        inc += step
 
     return result
 
@@ -169,7 +171,7 @@ def factor_ever_step(qty, start_price, indicator):
 
 
 if __name__ == '__main__':
-    r = fibonacci(25, 11000, 1)
+    r = fibonacci(20, 11000, 1, step=5)
     with open('1.txt', 'w') as f:
         f.write(json.dumps(r, indent=4))
 

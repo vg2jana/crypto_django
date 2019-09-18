@@ -258,7 +258,7 @@ class User:
                 break
             counter += 1
 
-        ally_order_properties = fibonacci(qty, first_order.price, ally_indicator)
+        ally_order_properties = fibonacci(qty, first_order.price, ally_indicator, step=step)
 
         ally_prices, ally_qtys = zip(*ally_order_properties)
 
