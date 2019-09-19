@@ -248,6 +248,7 @@ class User:
         past_qtys = []
         past_prices = [-1,]
         ally_side = first_order.side
+        entry_price = first_order.price
 
         counter = 1
         factor = []
@@ -274,10 +275,10 @@ class User:
                 index = ally_prices.index(ally_price)
                 ltp = self.ws.ltp()
                 if ally_side == 'Buy':
-                    if ally_price > ltp - 1 or cross_order.price < ally_price:
+                    if ally_price > ltp - 1 or entry_price < ally_price:
                         continue
                 else:
-                    if ally_price < ltp + 1 or ally_price < cross_order.price:
+                    if ally_price < ltp + 1 or ally_price < entry_price:
                         continue
 
                 # Get open orders
@@ -339,7 +340,8 @@ class User:
                     # increments = max(15, int(cross_order.orderQty / 5))
                     increments = 20
                     total_cum_qty = abs(position['currentQty'])
-                    average_price = position['avgEntryPrice'] + (increments * cross_indicator)
+                    entry_price = position['avgEntryPrice']
+                    average_price = entry_price + (increments * cross_indicator)
                     average_price = round(self.tick_size * round(average_price / self.tick_size), self.num_decimals)
 
                     if total_cum_qty != cross_order.orderQty or average_price != cross_order.price:
