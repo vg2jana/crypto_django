@@ -248,7 +248,7 @@ class User:
         past_qtys = []
         past_prices = [-1,]
         ally_side = first_order.side
-        ally_order_properties = []
+        average_price = cross_order.price
 
         counter = 1
         factor = []
@@ -274,9 +274,12 @@ class User:
 
                 index = ally_prices.index(ally_price)
                 ltp = self.ws.ltp()
-                if (ally_side == 'Buy' and ltp - 1 < ally_price) or\
-                    (ally_side == 'Sell' and ltp + 1 > ally_price):
-                    continue
+                if ally_side == 'Buy':
+                    if ally_price > ltp - 1 or average_price < ally_price:
+                        continue
+                else:
+                    if ally_price < ltp + 1 or ally_price < average_price:
+                        continue
 
                 # Get open orders
                 open_prices = [-1,]

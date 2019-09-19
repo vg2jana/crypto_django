@@ -89,7 +89,7 @@ class SampleCronJob(CronJobBase):
 
         count = 0
         open_order = None
-        while count < 1 or open_order is not None:
+        while True or open_order is not None:
             # Choose side and qty
             ltp_range = data['side']
             qty = int(data['qty'])
